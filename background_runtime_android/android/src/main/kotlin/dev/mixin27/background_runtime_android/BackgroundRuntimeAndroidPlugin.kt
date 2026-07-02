@@ -15,7 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, EventChannel.StreamHandler {
 
     private lateinit var channel: MethodChannel
     private lateinit var downloadEventChannel: EventChannel
@@ -23,6 +23,9 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
     private lateinit var lifecycleEventChannel: EventChannel
     private lateinit var context: Context
     private var activityBinding: ActivityPluginBinding? = null
+
+    @Volatile
+    private var lifecycleEventSink: EventChannel.EventSink? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -34,21 +37,44 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
             binding.binaryMessenger,
             "dev.mixin27.background_runtime/downloadEvents"
         )
+        downloadEventChannel.setStreamHandler(DownloadManager)
+
         playerStateEventChannel = EventChannel(
             binding.binaryMessenger,
             "dev.mixin27.background_runtime/playerState"
         )
+        playerStateEventChannel.setStreamHandler(AudioPlayerManager)
+
         lifecycleEventChannel = EventChannel(
             binding.binaryMessenger,
             "dev.mixin27.background_runtime/lifecycleEvents"
         )
+        lifecycleEventChannel.setStreamHandler(this)
 
         context = binding.applicationContext
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+        downloadEventChannel.setStreamHandler(null)
+        playerStateEventChannel.setStreamHandler(null)
+        lifecycleEventChannel.setStreamHandler(null)
+        lifecycleEventSink = null
         scope.cancel()
+    }
+
+    // MARK: - Lifecycle EventChannel.StreamHandler
+
+    override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
+        lifecycleEventSink = sink
+    }
+
+    override fun onCancel(arguments: Any?) {
+        lifecycleEventSink = null
+    }
+
+    private fun emitLifecycleEvent(state: String) {
+        lifecycleEventSink?.success(mapOf("state" to state))
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: MethodChannel.Result) {
@@ -73,6 +99,7 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
             try {
                 val config = call.argument<Map<String, Any?>>("config")
                 BackgroundRuntimeServiceManager.initialize(context, config)
+                emitLifecycleEvent("INITIALIZED")
                 result.success(null)
             } catch (e: Exception) {
                 result.error("SERVICE_UNAVAILABLE", e.message, null)
@@ -171,6 +198,7 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         scope.launch {
             try {
                 BackgroundRuntimeServiceManager.shutdown(context)
+                emitLifecycleEvent("SHUTDOWN")
                 result.success(null)
             } catch (e: Exception) {
                 result.error("SERVICE_UNAVAILABLE", e.message, null)
