@@ -1,7 +1,11 @@
 package dev.mixin27.background_runtime_android
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.annotation.NonNull
+import androidx.core.app.ActivityCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -9,11 +13,13 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, EventChannel.StreamHandler {
 
@@ -23,6 +29,8 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
     private lateinit var lifecycleEventChannel: EventChannel
     private lateinit var context: Context
     private var activityBinding: ActivityPluginBinding? = null
+
+    private val pendingPermissionRequests = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
 
     @Volatile
     private var lifecycleEventSink: EventChannel.EventSink? = null
@@ -98,6 +106,15 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         scope.launch {
             try {
                 val config = call.argument<Map<String, Any?>>("config")
+                val granted = requestNotificationPermission()
+                if (!granted) {
+                    result.error(
+                        "PERMISSION_DENIED",
+                        "Notification permission is required for background runtime.",
+                        null
+                    )
+                    return@launch
+                }
                 BackgroundRuntimeServiceManager.initialize(context, config)
                 emitLifecycleEvent("INITIALIZED")
                 result.success(null)
@@ -206,8 +223,44 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
+    // MARK: - Permission Request
+
+    companion object {
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 9001
+    }
+
+    private suspend fun requestNotificationPermission(): Boolean {
+        val activity = activityBinding?.activity ?: return true
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED
+        ) return true
+
+        val deferred = CompletableDeferred<Boolean>()
+        pendingPermissionRequests[Manifest.permission.POST_NOTIFICATIONS] = deferred
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST_CODE
+        )
+        return deferred.await()
+    }
+
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         activityBinding = binding
+        binding.addRequestPermissionsResultListener { requestCode, permissions, grantResults ->
+            if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+                permissions.forEachIndexed { index, permission ->
+                    val deferred = pendingPermissionRequests.remove(permission)
+                    deferred?.complete(
+                        grantResults.isNotEmpty() && grantResults[index] == PackageManager.PERMISSION_GRANTED
+                    )
+                }
+                true
+            } else {
+                false
+            }
+        }
     }
 
     override fun onDetachedFromActivity() {

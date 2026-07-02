@@ -7,6 +7,7 @@ import dev.mixin27.background_runtime_android.database.DatabaseProvider
 import dev.mixin27.background_runtime_android.database.entity.AudioTrackEntity
 import io.flutter.plugin.common.EventChannel
 
+
 internal object AudioPlayerManager : EventChannel.StreamHandler {
 
     private var player: ExoPlayer? = null

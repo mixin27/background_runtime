@@ -101,14 +101,14 @@ final class MethodChannelBackgroundRuntime extends BackgroundRuntimePlatform {
   Stream<DownloadEvent> downloadEvents() {
     return _downloadEventChannel
         .receiveBroadcastStream()
-        .map((event) => DownloadEvent.fromMap(event as Map<String, dynamic>));
+        .map((event) => DownloadEvent.fromMap((event as Map).cast<String, dynamic>()));
   }
 
   @override
   Stream<PlayerState> playerState() {
     return _playerStateChannel
         .receiveBroadcastStream()
-        .map((event) => PlayerState.fromMap(event as Map<String, dynamic>));
+        .map((event) => PlayerState.fromMap((event as Map).cast<String, dynamic>()));
   }
 
   @override
@@ -116,7 +116,7 @@ final class MethodChannelBackgroundRuntime extends BackgroundRuntimePlatform {
     return _lifecycleEventChannel
         .receiveBroadcastStream()
         .map(
-            (event) => RuntimeLifecycle.fromMap(event as Map<String, dynamic>));
+            (event) => RuntimeLifecycle.fromMap((event as Map).cast<String, dynamic>()));
   }
 
   @override

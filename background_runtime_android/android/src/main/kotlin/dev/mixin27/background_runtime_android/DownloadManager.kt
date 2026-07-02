@@ -36,47 +36,55 @@ internal object DownloadManager : EventChannel.StreamHandler {
         eventSink = null
     }
 
-    private fun emitProgress(taskId: String, bytesReceived: Long, totalBytes: Long) {
-        eventSink?.success(
-            mapOf(
-                "taskId" to taskId,
-                "state" to "DOWNLOADING",
-                "bytesReceived" to bytesReceived,
-                "totalBytes" to totalBytes
+    private suspend fun emitProgress(taskId: String, bytesReceived: Long, totalBytes: Long) {
+        withContext(Dispatchers.Main) {
+            eventSink?.success(
+                mapOf(
+                    "taskId" to taskId,
+                    "state" to "DOWNLOADING",
+                    "bytesReceived" to bytesReceived,
+                    "totalBytes" to totalBytes
+                )
             )
-        )
+        }
     }
 
-    private fun emitCompleted(taskId: String, bytesReceived: Long, totalBytes: Long) {
-        eventSink?.success(
-            mapOf(
-                "taskId" to taskId,
-                "state" to "COMPLETED",
-                "bytesReceived" to bytesReceived,
-                "totalBytes" to totalBytes
+    private suspend fun emitCompleted(taskId: String, bytesReceived: Long, totalBytes: Long) {
+        withContext(Dispatchers.Main) {
+            eventSink?.success(
+                mapOf(
+                    "taskId" to taskId,
+                    "state" to "COMPLETED",
+                    "bytesReceived" to bytesReceived,
+                    "totalBytes" to totalBytes
+                )
             )
-        )
+        }
     }
 
-    private fun emitPaused(taskId: String, bytesReceived: Long, totalBytes: Long) {
-        eventSink?.success(
-            mapOf(
-                "taskId" to taskId,
-                "state" to "PAUSED",
-                "bytesReceived" to bytesReceived,
-                "totalBytes" to totalBytes
+    private suspend fun emitPaused(taskId: String, bytesReceived: Long, totalBytes: Long) {
+        withContext(Dispatchers.Main) {
+            eventSink?.success(
+                mapOf(
+                    "taskId" to taskId,
+                    "state" to "PAUSED",
+                    "bytesReceived" to bytesReceived,
+                    "totalBytes" to totalBytes
+                )
             )
-        )
+        }
     }
 
-    private fun emitFailed(taskId: String, error: String) {
-        eventSink?.success(
-            mapOf(
-                "taskId" to taskId,
-                "state" to "FAILED",
-                "error" to error
+    private suspend fun emitFailed(taskId: String, error: String) {
+        withContext(Dispatchers.Main) {
+            eventSink?.success(
+                mapOf(
+                    "taskId" to taskId,
+                    "state" to "FAILED",
+                    "error" to error
+                )
             )
-        )
+        }
     }
 
     suspend fun startDownload(context: Context, request: Map<String, Any?>?): String {
