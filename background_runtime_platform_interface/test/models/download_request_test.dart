@@ -1,10 +1,10 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('DownloadRequest', () {
     test('creates with required fields', () {
-      final request = DownloadRequest(
+      const request = DownloadRequest(
         url: 'https://example.com/file.zip',
         destinationPath: '/tmp/file.zip',
       );
@@ -16,7 +16,7 @@ void main() {
     });
 
     test('creates with optional fields', () {
-      final request = DownloadRequest(
+      const request = DownloadRequest(
         url: 'https://example.com/file.zip',
         destinationPath: '/tmp/file.zip',
         headers: {'Authorization': 'Bearer token'},
@@ -29,7 +29,7 @@ void main() {
     });
 
     test('serializes to map and back', () {
-      final original = DownloadRequest(
+      const original = DownloadRequest(
         url: 'https://example.com/file.zip',
         destinationPath: '/tmp/file.zip',
         headers: {'Authorization': 'Bearer token'},
@@ -46,11 +46,11 @@ void main() {
     });
 
     test('value equality', () {
-      final a = DownloadRequest(
+      const a = DownloadRequest(
         url: 'https://example.com/a.zip',
         destinationPath: '/tmp/a.zip',
       );
-      final b = DownloadRequest(
+      const b = DownloadRequest(
         url: 'https://example.com/a.zip',
         destinationPath: '/tmp/a.zip',
       );
@@ -59,11 +59,11 @@ void main() {
     });
 
     test('value inequality', () {
-      final a = DownloadRequest(
+      const a = DownloadRequest(
         url: 'https://example.com/a.zip',
         destinationPath: '/tmp/a.zip',
       );
-      final b = DownloadRequest(
+      const b = DownloadRequest(
         url: 'https://example.com/b.zip',
         destinationPath: '/tmp/b.zip',
       );
@@ -71,7 +71,7 @@ void main() {
     });
 
     test('toString contains url', () {
-      final request = DownloadRequest(
+      const request = DownloadRequest(
         url: 'https://example.com/file.zip',
         destinationPath: '/tmp/file.zip',
       );

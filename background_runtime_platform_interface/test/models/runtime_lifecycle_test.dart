@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('RuntimeLifecycleEvent', () {
@@ -41,7 +41,7 @@ void main() {
     test('serializes to map and back', () {
       final original = RuntimeLifecycle(
         event: RuntimeLifecycleEvent.initialized,
-        timestamp: DateTime.utc(2026, 1, 1),
+        timestamp: DateTime.utc(2026),
       );
       final map = original.toMap();
       final restored = RuntimeLifecycle.fromMap(map);

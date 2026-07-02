@@ -1,6 +1,6 @@
+import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +33,7 @@ void main() {
         return {'taskId': 'task_123'};
       });
       final taskId = await runtime.startDownload(
-        DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
+        const DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
       );
       expect(taskId, 'task_123');
     });
@@ -87,7 +87,7 @@ void main() {
       });
       expect(
         () => runtime.startDownload(
-          DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
+          const DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
         ),
         throwsA(isA<TaskNotFoundException>()),
       );

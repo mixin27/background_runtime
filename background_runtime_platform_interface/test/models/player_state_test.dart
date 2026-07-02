@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PlaybackState', () {
@@ -20,18 +20,18 @@ void main() {
 
   group('PlayerState', () {
     test('creates with required fields', () {
-      final state = PlayerState(state: PlaybackState.idle);
+      const state = PlayerState(state: PlaybackState.idle);
       expect(state.state, PlaybackState.idle);
       expect(state.trackId, isNull);
       expect(state.position, isNull);
     });
 
     test('creates with all fields', () {
-      final state = PlayerState(
+      const state = PlayerState(
         state: PlaybackState.playing,
         trackId: 'track_1',
-        position: const Duration(seconds: 30),
-        duration: const Duration(seconds: 180),
+        position: Duration(seconds: 30),
+        duration: Duration(seconds: 180),
       );
       expect(state.trackId, 'track_1');
       expect(state.position, const Duration(seconds: 30));
@@ -39,11 +39,11 @@ void main() {
     });
 
     test('serializes to map and back', () {
-      final original = PlayerState(
+      const original = PlayerState(
         state: PlaybackState.playing,
         trackId: 'track_1',
-        position: const Duration(seconds: 30),
-        duration: const Duration(seconds: 180),
+        position: Duration(seconds: 30),
+        duration: Duration(seconds: 180),
       );
       final map = original.toMap();
       final restored = PlayerState.fromMap(map);
@@ -51,11 +51,11 @@ void main() {
     });
 
     test('value equality', () {
-      final a = PlayerState(
+      const a = PlayerState(
         state: PlaybackState.playing,
         trackId: 'track_1',
       );
-      final b = PlayerState(
+      const b = PlayerState(
         state: PlaybackState.playing,
         trackId: 'track_1',
       );
@@ -63,7 +63,7 @@ void main() {
     });
 
     test('toString contains state and trackId', () {
-      final state = PlayerState(
+      const state = PlayerState(
         state: PlaybackState.playing,
         trackId: 'track_1',
       );

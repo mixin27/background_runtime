@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
 import 'package:background_runtime/background_runtime.dart';
+import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late FakeBackgroundRuntime fake;
@@ -30,7 +30,7 @@ void main() {
     test('download returns taskId', () async {
       await BackgroundRuntime.initialize();
       final taskId = await BackgroundRuntime.download(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
       expect(taskId, startsWith('fake_'));
     });
@@ -38,7 +38,7 @@ void main() {
     test('pause delegates to platform', () async {
       await BackgroundRuntime.initialize();
       final taskId = await BackgroundRuntime.download(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
       final pauseEvent = BackgroundRuntime.observeDownloads().firstWhere(
         (e) => e.taskId == taskId && e.state == DownloadState.paused,
@@ -50,7 +50,7 @@ void main() {
     test('resume delegates to platform', () async {
       await BackgroundRuntime.initialize();
       final taskId = await BackgroundRuntime.download(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
       await BackgroundRuntime.pause(taskId);
       final resumeEvent = BackgroundRuntime.observeDownloads().firstWhere(
@@ -63,7 +63,7 @@ void main() {
     test('cancel delegates to platform', () async {
       await BackgroundRuntime.initialize();
       final taskId = await BackgroundRuntime.download(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
       final cancelEvent = BackgroundRuntime.observeDownloads().firstWhere(
         (e) => e.taskId == taskId && e.state == DownloadState.cancelled,

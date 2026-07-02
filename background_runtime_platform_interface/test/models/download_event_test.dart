@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('DownloadState', () {
@@ -19,7 +19,7 @@ void main() {
 
   group('DownloadEvent', () {
     test('creates with required fields', () {
-      final event = DownloadEvent(
+      const event = DownloadEvent(
         taskId: 'task_1',
         url: 'https://example.com/file.zip',
         state: DownloadState.downloading,
@@ -30,15 +30,13 @@ void main() {
     });
 
     test('creates with all fields', () {
-      final event = DownloadEvent(
+      const event = DownloadEvent(
         taskId: 'task_1',
         url: 'https://example.com/file.zip',
         state: DownloadState.completed,
         progress: 100.0,
         bytesReceived: 1000,
         totalBytes: 1000,
-        errorCode: null,
-        errorMessage: null,
       );
       expect(event.progress, 100.0);
       expect(event.bytesReceived, 1000);
@@ -46,7 +44,7 @@ void main() {
     });
 
     test('serializes to map and back', () {
-      final original = DownloadEvent(
+      const original = DownloadEvent(
         taskId: 'task_1',
         url: 'https://example.com/file.zip',
         state: DownloadState.downloading,
@@ -60,13 +58,13 @@ void main() {
     });
 
     test('value equality', () {
-      final a = DownloadEvent(
+      const a = DownloadEvent(
         taskId: 'task_1',
         url: 'https://example.com/file.zip',
         state: DownloadState.completed,
         progress: 100.0,
       );
-      final b = DownloadEvent(
+      const b = DownloadEvent(
         taskId: 'task_1',
         url: 'https://example.com/file.zip',
         state: DownloadState.completed,
@@ -76,7 +74,7 @@ void main() {
     });
 
     test('toString contains taskId and state', () {
-      final event = DownloadEvent(
+      const event = DownloadEvent(
         taskId: 'task_1',
         url: 'https://example.com/file.zip',
         state: DownloadState.downloading,

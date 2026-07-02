@@ -1,7 +1,5 @@
-import 'dart:async';
-
-import 'package:flutter_test/flutter_test.dart';
 import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late FakeBackgroundRuntime fake;
@@ -30,7 +28,7 @@ void main() {
 
       await fake.initialize(const BackgroundRuntimeConfig());
       final taskId = await fake.startDownload(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
 
       expect(taskId, startsWith('fake_'));
@@ -42,7 +40,7 @@ void main() {
     test('pauseDownload pauses a running download', () async {
       await fake.initialize(const BackgroundRuntimeConfig());
       final taskId = await fake.startDownload(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
 
       final eventFuture = fake.downloadEvents()
@@ -57,7 +55,7 @@ void main() {
     test('resumeDownload resumes a paused download', () async {
       await fake.initialize(const BackgroundRuntimeConfig());
       final taskId = await fake.startDownload(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
       await fake.pauseDownload(taskId);
 
@@ -73,7 +71,7 @@ void main() {
     test('cancelDownload cancels a download', () async {
       await fake.initialize(const BackgroundRuntimeConfig());
       final taskId = await fake.startDownload(
-        DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
+        const DownloadRequest(url: 'https://example.com/file.zip', destinationPath: '/tmp/file.zip'),
       );
 
       final eventFuture = fake.downloadEvents()
@@ -140,7 +138,7 @@ void main() {
     test('operations before initialize throw NotInitializedException', () async {
       expect(
         () => fake.startDownload(
-          DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
+          const DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
         ),
         throwsA(isA<NotInitializedException>()),
       );
@@ -155,7 +153,7 @@ void main() {
     test('shutdown emits terminated event and clears state', () async {
       await fake.initialize(const BackgroundRuntimeConfig());
       final taskId = await fake.startDownload(
-        DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
+        const DownloadRequest(url: 'https://example.com/f.zip', destinationPath: '/tmp/f.zip'),
       );
 
       await fake.shutdown();

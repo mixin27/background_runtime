@@ -1,10 +1,10 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:background_runtime_platform_interface/background_runtime_platform_interface.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('BackgroundRuntimeConfig', () {
     test('creates with default values', () {
-      final config = BackgroundRuntimeConfig();
+      const config = BackgroundRuntimeConfig();
       expect(config.enableDownloads, isTrue);
       expect(config.enableAudio, isTrue);
       expect(config.enableForegroundService, isTrue);
@@ -14,7 +14,7 @@ void main() {
     });
 
     test('creates with custom values', () {
-      final config = BackgroundRuntimeConfig(
+      const config = BackgroundRuntimeConfig(
         enableDownloads: false,
         enableAudio: false,
         enableForegroundService: false,
@@ -27,9 +27,8 @@ void main() {
     });
 
     test('serializes to map and back', () {
-      final original = BackgroundRuntimeConfig(
+      const original = BackgroundRuntimeConfig(
         enableDownloads: false,
-        enableAudio: true,
         notificationChannelId: 'channel_id',
       );
       final map = original.toMap();
@@ -38,13 +37,13 @@ void main() {
     });
 
     test('value equality', () {
-      final a = BackgroundRuntimeConfig(enableDownloads: false);
-      final b = BackgroundRuntimeConfig(enableDownloads: false);
+      const a = BackgroundRuntimeConfig(enableDownloads: false);
+      const b = BackgroundRuntimeConfig(enableDownloads: false);
       expect(a, equals(b));
     });
 
     test('toString contains enable fields', () {
-      final config = BackgroundRuntimeConfig(enableDownloads: false);
+      const config = BackgroundRuntimeConfig(enableDownloads: false);
       expect(config.toString(), contains('false'));
     });
   });

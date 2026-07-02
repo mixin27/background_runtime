@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import '../exceptions/background_runtime_exception.dart';
-import '../models/download_request.dart';
-import '../models/download_event.dart';
 import '../models/audio_track.dart';
+import '../models/download_event.dart';
+import '../models/download_request.dart';
 import '../models/player_state.dart';
 import '../models/runtime_config.dart';
 import '../models/runtime_lifecycle.dart';
@@ -207,7 +207,7 @@ final class FakeBackgroundRuntime extends BackgroundRuntimePlatform {
   }
 
   void _ensureInitialized() {
-    if (!_initialized) throw NotInitializedException();
+    if (!_initialized) throw const NotInitializedException();
   }
 }
 

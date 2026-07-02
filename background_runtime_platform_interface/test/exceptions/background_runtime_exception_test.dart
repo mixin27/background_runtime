@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('BackgroundRuntimeException', () {
     test('creates with code and message', () {
-      final e = BackgroundRuntimeException(
+      const e = BackgroundRuntimeException(
         code: 'TEST_ERROR',
         message: 'Test message',
       );
@@ -24,7 +24,7 @@ void main() {
     });
 
     test('toString contains code and message', () {
-      final e = BackgroundRuntimeException(
+      const e = BackgroundRuntimeException(
         code: 'TEST_ERROR',
         message: 'Something went wrong',
       );
@@ -33,77 +33,77 @@ void main() {
     });
 
     test('value equality', () {
-      final a = BackgroundRuntimeException(code: 'ERR', message: 'msg');
-      final b = BackgroundRuntimeException(code: 'ERR', message: 'msg');
+      const a = BackgroundRuntimeException(code: 'ERR', message: 'msg');
+      const b = BackgroundRuntimeException(code: 'ERR', message: 'msg');
       expect(a, equals(b));
     });
   });
 
   group('typed exceptions', () {
     test('DownloadFailedException', () {
-      final e = DownloadFailedException(message: 'Download failed');
+      const e = DownloadFailedException(message: 'Download failed');
       expect(e.code, 'DOWNLOAD_FAILED');
     });
 
     test('StorageUnavailableException', () {
-      final e = StorageUnavailableException(message: 'No space');
+      const e = StorageUnavailableException(message: 'No space');
       expect(e.code, 'STORAGE_UNAVAILABLE');
     });
 
     test('PermissionDeniedException', () {
-      final e = PermissionDeniedException(message: 'No permission');
+      const e = PermissionDeniedException(message: 'No permission');
       expect(e.code, 'PERMISSION_DENIED');
     });
 
     test('NetworkUnavailableException', () {
-      final e = NetworkUnavailableException(message: 'No network');
+      const e = NetworkUnavailableException(message: 'No network');
       expect(e.code, 'NETWORK_UNAVAILABLE');
     });
 
     test('ServiceUnavailableException', () {
-      final e = ServiceUnavailableException(message: 'Service down');
+      const e = ServiceUnavailableException(message: 'Service down');
       expect(e.code, 'SERVICE_UNAVAILABLE');
     });
 
     test('TaskNotFoundException', () {
-      final e = TaskNotFoundException(message: 'Task not found');
+      const e = TaskNotFoundException(message: 'Task not found');
       expect(e.code, 'TASK_NOT_FOUND');
     });
 
     test('NotInitializedException', () {
-      final e = const NotInitializedException();
+      const e = NotInitializedException();
       expect(e.code, 'NOT_INITIALIZED');
       expect(e.message, 'BackgroundRuntime has not been initialized.');
     });
 
     test('UnsupportedPlatformException', () {
-      final e = UnsupportedPlatformException(message: 'Unsupported');
+      const e = UnsupportedPlatformException(message: 'Unsupported');
       expect(e.code, 'UNSUPPORTED_PLATFORM');
     });
 
     test('all typed exceptions extend BackgroundRuntimeException', () {
       expect(
-        DownloadFailedException(message: ''),
+        const DownloadFailedException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
       expect(
-        StorageUnavailableException(message: ''),
+        const StorageUnavailableException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
       expect(
-        PermissionDeniedException(message: ''),
+        const PermissionDeniedException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
       expect(
-        NetworkUnavailableException(message: ''),
+        const NetworkUnavailableException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
       expect(
-        ServiceUnavailableException(message: ''),
+        const ServiceUnavailableException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
       expect(
-        TaskNotFoundException(message: ''),
+        const TaskNotFoundException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
       expect(
@@ -111,7 +111,7 @@ void main() {
         isA<BackgroundRuntimeException>(),
       );
       expect(
-        UnsupportedPlatformException(message: ''),
+        const UnsupportedPlatformException(message: ''),
         isA<BackgroundRuntimeException>(),
       );
     });
