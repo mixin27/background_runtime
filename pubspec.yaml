@@ -1,0 +1,15 @@
+name: background_runtime_workspace
+publish_to: none
+description: A production-grade federated Flutter plugin for long-running background execution.
+environment:
+  sdk: ^3.11.0
+
+workspace:
+  - background_runtime
+  - background_runtime_platform_interface
+  - background_runtime_android
+  - background_runtime_ios
+  - background_runtime_macos
+  - background_runtime_windows
+  - background_runtime_linux
+  - background_runtime_web
