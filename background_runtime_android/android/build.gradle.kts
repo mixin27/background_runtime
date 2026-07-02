@@ -1,9 +1,3 @@
-plugins {
-    id("com.android.library") version "8.11.1"
-    id("org.jetbrains.kotlin.android") version "2.0.21"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
-}
-
 group = "dev.mixin27.background_runtime_android"
 version = "1.0-SNAPSHOT"
 
@@ -12,6 +6,11 @@ allprojects {
         google()
         mavenCentral()
     }
+}
+
+plugins {
+    id("com.android.library")
+    id("kotlin-android")
 }
 
 android {

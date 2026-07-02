@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  background_runtime_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

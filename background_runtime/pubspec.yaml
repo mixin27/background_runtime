@@ -16,9 +16,37 @@ dependencies:
     sdk: flutter
   background_runtime_platform_interface:
     path: ../background_runtime_platform_interface
+  background_runtime_android:
+    path: ../background_runtime_android
+  background_runtime_ios:
+    path: ../background_runtime_ios
+  background_runtime_macos:
+    path: ../background_runtime_macos
+  background_runtime_windows:
+    path: ../background_runtime_windows
+  background_runtime_linux:
+    path: ../background_runtime_linux
+  background_runtime_web:
+    path: ../background_runtime_web
 
 dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
   mocktail: ^1.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        default_package: background_runtime_android
+      ios:
+        default_package: background_runtime_ios
+      macos:
+        default_package: background_runtime_macos
+      windows:
+        default_package: background_runtime_windows
+      linux:
+        default_package: background_runtime_linux
+      web:
+        default_package: background_runtime_web
