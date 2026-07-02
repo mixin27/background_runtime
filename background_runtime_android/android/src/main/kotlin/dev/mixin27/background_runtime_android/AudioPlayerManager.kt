@@ -6,6 +6,13 @@ import androidx.media3.exoplayer.ExoPlayer
 import dev.mixin27.background_runtime_android.database.DatabaseProvider
 import dev.mixin27.background_runtime_android.database.entity.AudioTrackEntity
 import io.flutter.plugin.common.EventChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 
 internal object AudioPlayerManager : EventChannel.StreamHandler {
@@ -15,6 +22,9 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
 
     @Volatile
     private var eventSink: EventChannel.EventSink? = null
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var notificationJob: Job? = null
 
     override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
         eventSink = sink
@@ -39,6 +49,33 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         track["durationMillis"]?.let { map["durationMillis"] = it }
         player?.currentPosition?.let { map["positionMillis"] = it }
         eventSink?.success(map)
+    }
+
+    private fun startProgressUpdates(context: Context) {
+        notificationJob?.cancel()
+        notificationJob = scope.launch {
+            while (isActive) {
+                val p = player
+                val track = currentTrack
+                if (p != null && track != null) {
+                    val title = track["title"] as? String ?: (track["source"] as? String ?: "Audio")
+                    val artist = track["artist"] as? String ?: "Unknown Artist"
+                    BackgroundRuntimeService.updateAudioNotification(
+                        title = title,
+                        artist = artist,
+                        isPlaying = true,
+                        positionMillis = p.currentPosition,
+                        durationMillis = p.duration.coerceAtLeast(0)
+                    )
+                }
+                delay(1000L)
+            }
+        }
+    }
+
+    private fun stopProgressUpdates() {
+        notificationJob?.cancel()
+        notificationJob = null
     }
 
     suspend fun play(context: Context, track: Map<String, Any?>) {
@@ -75,10 +112,16 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         db.audioTrackDao.upsertTrack(entity)
 
         emitState("PLAYING")
-        BackgroundRuntimeService.updateAudioNotification(title ?: source, artist ?: "Unknown Artist", true)
+        BackgroundRuntimeService.updateAudioNotification(
+            title = title ?: source,
+            artist = artist ?: "Unknown Artist",
+            isPlaying = true
+        )
+        startProgressUpdates(context)
     }
 
     suspend fun pause(context: Context) {
+        if (player == null && currentTrack == null) return
         player?.pause()
         val db = DatabaseProvider.getDatabase(context)
         player?.currentPosition?.let { position ->
@@ -86,10 +129,22 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         }
         db.audioTrackDao.updateState("PAUSED")
         emitState("PAUSED")
-        BackgroundRuntimeService.removeAudioNotification()
+        stopProgressUpdates()
+        val track = currentTrack
+        if (track != null) {
+            val p = player
+            BackgroundRuntimeService.updateAudioNotification(
+                title = track["title"] as? String ?: (track["source"] as? String ?: "Audio"),
+                artist = track["artist"] as? String ?: "Unknown Artist",
+                isPlaying = false,
+                positionMillis = p?.currentPosition ?: 0,
+                durationMillis = p?.duration?.coerceAtLeast(0) ?: 0
+            )
+        }
     }
 
     suspend fun resume(context: Context) {
+        if (player == null) return
         player?.playWhenReady = true
         val db = DatabaseProvider.getDatabase(context)
         db.audioTrackDao.updateState("PLAYING")
@@ -98,11 +153,13 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         if (track != null) {
             val title = track["title"] as? String ?: (track["source"] as? String ?: "Audio")
             val artist = track["artist"] as? String ?: "Unknown Artist"
-            BackgroundRuntimeService.updateAudioNotification(title, artist, true)
+            BackgroundRuntimeService.updateAudioNotification(title, artist, isPlaying = true)
         }
+        startProgressUpdates(context)
     }
 
     suspend fun stop(context: Context) {
+        if (player == null && currentTrack == null) return
         player?.let {
             it.stop()
             it.release()
@@ -112,6 +169,7 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         val db = DatabaseProvider.getDatabase(context)
         db.audioTrackDao.deleteCurrentTrack()
         emitState("STOPPED")
+        stopProgressUpdates()
         BackgroundRuntimeService.removeAudioNotification()
     }
 
