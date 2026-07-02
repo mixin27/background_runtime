@@ -3,22 +3,62 @@ import FlutterMacOS
 import AVFoundation
 
 public class BackgroundRuntimeMacosPlugin: NSObject, FlutterPlugin {
-    private var audioPlayer: AVAudioPlayer?
-    private var downloadTasks: [String: URLSessionDownloadTask] = [:]
+    private let persistence = PersistenceManager()
+    private lazy var notificationManager: NotificationManager = {
+        NotificationManager()
+    }()
+    private lazy var downloadManager: DownloadManager = {
+        DownloadManager(persistence: persistence, notificationManager: notificationManager)
+    }()
+    private lazy var audioManager: AudioManager = {
+        AudioManager(persistence: persistence)
+    }()
+
+    private var lifecycleEventSink: FlutterEventSink?
+
+    private var methodChannel: FlutterMethodChannel?
+    private var downloadEventChannel: FlutterEventChannel?
+    private var playerStateChannel: FlutterEventChannel?
+    private var lifecycleEventChannel: FlutterEventChannel?
 
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(
+        let instance = BackgroundRuntimeMacosPlugin()
+
+        let methodChannel = FlutterMethodChannel(
             name: "dev.mixin27.background_runtime/method",
             binaryMessenger: registrar.messenger
         )
-        let instance = BackgroundRuntimeMacosPlugin()
-        registrar.addMethodCallDelegate(instance, channel: channel)
+        registrar.addMethodCallDelegate(instance, channel: methodChannel)
+        instance.methodChannel = methodChannel
+
+        let downloadEventChannel = FlutterEventChannel(
+            name: "dev.mixin27.background_runtime/downloadEvents",
+            binaryMessenger: registrar.messenger
+        )
+        downloadEventChannel.setStreamHandler(instance.downloadManager)
+        instance.downloadEventChannel = downloadEventChannel
+
+        let playerStateChannel = FlutterEventChannel(
+            name: "dev.mixin27.background_runtime/playerState",
+            binaryMessenger: registrar.messenger
+        )
+        playerStateChannel.setStreamHandler(instance.audioManager)
+        instance.playerStateChannel = playerStateChannel
+
+        let lifecycleEventChannel = FlutterEventChannel(
+            name: "dev.mixin27.background_runtime/lifecycleEvents",
+            binaryMessenger: registrar.messenger
+        )
+        lifecycleEventChannel.setStreamHandler(instance)
+        instance.lifecycleEventChannel = lifecycleEventChannel
+
+        instance.downloadManager.setupSession()
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "initialize":
-            result(nil)
+            handleInitialize(call, result)
         case "startDownload":
             handleStartDownload(call, result)
         case "pauseDownload":
@@ -44,99 +84,143 @@ public class BackgroundRuntimeMacosPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    private func handleStartDownload(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
+    // MARK: - Initialize
+
+    private func handleInitialize(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let request = args["request"] as? [String: Any],
-              let urlString = request["url"] as? String,
-              let url = URL(string: urlString) else {
-            result(FlutterError(code: "DOWNLOAD_FAILED", message: "Invalid request", details: nil))
+              let configMap = args["config"] as? [String: Any] else {
+            result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing config", details: nil))
             return
         }
 
-        let taskId = UUID().uuidString
-        let task = URLSession.shared.downloadTask(with: url) { location, response, error in
-            if let error = error {
-                result(FlutterError(code: "DOWNLOAD_FAILED", message: error.localizedDescription, details: nil))
-                return
-            }
-            if let location = location,
-               let destinationPath = request["destinationPath"] as? String {
-                let fileURL = URL(fileURLWithPath: destinationPath)
-                try? FileManager.default.moveItem(at: location, to: fileURL)
-            }
-            result(["taskId": taskId])
+        let enableNotifications = configMap["enableNotifications"] as? Bool ?? false
+        let enableAudio = configMap["enableAudio"] as? Bool ?? true
+        let keepAlive = configMap["keepAlive"] as? Bool ?? true
+        let autoResume = configMap["autoResume"] as? Bool ?? true
+
+        let persistedConfig = PersistedConfig(
+            enableDownloads: configMap["enableDownloads"] as? Bool ?? true,
+            enableAudio: enableAudio,
+            enableNotifications: enableNotifications,
+            keepAlive: keepAlive,
+            autoResume: autoResume
+        )
+        persistence.saveConfig(persistedConfig)
+
+        if enableNotifications {
+            notificationManager.requestPermission()
         }
-        downloadTasks[taskId] = task
-        task.resume()
+
+        if enableAudio {
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.playback)
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                // Audio session setup is best-effort on macOS
+            }
+        }
+
+        if autoResume {
+            restoreState()
+        }
+
+        emitLifecycleEvent(state: "INITIALIZED")
+        result(nil)
+    }
+
+    private func restoreState() {
+        let activeDownloads = persistence.loadActiveDownloads()
+        for download in activeDownloads {
+            let request: [String: Any] = [
+                "url": download.url,
+                "destinationPath": download.destinationPath,
+                "headers": download.headersJson ?? "",
+                "saveToPublic": download.saveToPublic,
+            ]
+            persistence.removeDownload(taskId: download.taskId)
+            downloadManager.startDownload(request: request, completion: { _ in })
+        }
+
+        if let persistedTrack = persistence.loadAudioTrack(),
+           persistedTrack.state == "PLAYING" || persistedTrack.state == "PAUSED" {
+            let track: [String: Any] = [
+                "id": persistedTrack.trackId ?? "",
+                "title": persistedTrack.title ?? "",
+                "artist": persistedTrack.artist ?? "",
+                "album": persistedTrack.album ?? "",
+                "source": persistedTrack.source ?? "",
+                "durationMillis": persistedTrack.durationMillis ?? 0,
+            ]
+            audioManager.playAudio(track: track) { [weak self] _ in
+                if persistedTrack.state == "PAUSED" {
+                    self?.audioManager.pauseAudio { _ in }
+                }
+                if persistedTrack.positionMillis > 0 {
+                    self?.audioManager.seekAudio(positionMillis: persistedTrack.positionMillis) { _ in }
+                }
+            }
+        }
+    }
+
+    // MARK: - Download
+
+    private func handleStartDownload(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any],
+              let request = args["request"] as? [String: Any] else {
+            result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing request", details: nil))
+            return
+        }
+        downloadManager.startDownload(request: request, completion: result)
     }
 
     private func handlePauseDownload(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let taskId = args["taskId"] as? String,
-              let task = downloadTasks[taskId] else {
-            result(FlutterError(code: "TASK_NOT_FOUND", message: "Download task not found", details: nil))
+              let taskId = args["taskId"] as? String else {
+            result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing taskId", details: nil))
             return
         }
-        task.suspend()
-        result(nil)
+        downloadManager.pauseDownload(taskId: taskId, completion: result)
     }
 
     private func handleResumeDownload(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let taskId = args["taskId"] as? String,
-              let task = downloadTasks[taskId] else {
-            result(FlutterError(code: "TASK_NOT_FOUND", message: "Download task not found", details: nil))
+              let taskId = args["taskId"] as? String else {
+            result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing taskId", details: nil))
             return
         }
-        task.resume()
-        result(nil)
+        downloadManager.resumeDownload(taskId: taskId, completion: result)
     }
 
     private func handleCancelDownload(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let taskId = args["taskId"] as? String,
-              let task = downloadTasks[taskId] else {
-            result(FlutterError(code: "TASK_NOT_FOUND", message: "Download task not found", details: nil))
+              let taskId = args["taskId"] as? String else {
+            result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing taskId", details: nil))
             return
         }
-        task.cancel()
-        downloadTasks.removeValue(forKey: taskId)
-        result(nil)
+        downloadManager.cancelDownload(taskId: taskId, completion: result)
     }
+
+    // MARK: - Audio
 
     private func handlePlayAudio(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let track = args["track"] as? [String: Any],
-              let sourceString = track["source"] as? String,
-              let source = URL(string: sourceString) else {
-            result(FlutterError(code: "SERVICE_UNAVAILABLE", message: "Invalid track data", details: nil))
+              let track = args["track"] as? [String: Any] else {
+            result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing track", details: nil))
             return
         }
-
-        do {
-            let data = try Data(contentsOf: source)
-            audioPlayer = try AVAudioPlayer(data: data)
-            audioPlayer?.play()
-            result(nil)
-        } catch {
-            result(FlutterError(code: "SERVICE_UNAVAILABLE", message: error.localizedDescription, details: nil))
-        }
+        audioManager.playAudio(track: track, completion: result)
     }
 
     private func handlePauseAudio(_ result: @escaping FlutterResult) {
-        audioPlayer?.pause()
-        result(nil)
+        audioManager.pauseAudio(completion: result)
     }
 
     private func handleResumeAudio(_ result: @escaping FlutterResult) {
-        audioPlayer?.play()
-        result(nil)
+        audioManager.resumeAudio(completion: result)
     }
 
     private func handleStopAudio(_ result: @escaping FlutterResult) {
-        audioPlayer?.stop()
-        audioPlayer = nil
-        result(nil)
+        audioManager.stopAudio(completion: result)
     }
 
     private func handleSeekAudio(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
@@ -145,15 +229,40 @@ public class BackgroundRuntimeMacosPlugin: NSObject, FlutterPlugin {
             result(nil)
             return
         }
-        audioPlayer?.currentTime = TimeInterval(positionMillis) / 1000.0
+        audioManager.seekAudio(positionMillis: positionMillis, completion: result)
+    }
+
+    // MARK: - Shutdown
+
+    private func handleShutdown(_ result: @escaping FlutterResult) {
+        audioManager.shutdown()
+        downloadManager.shutdown()
+
+        methodChannel?.setMethodCallHandler(nil)
+        downloadEventChannel?.setStreamHandler(nil)
+        playerStateChannel?.setStreamHandler(nil)
+        lifecycleEventChannel?.setStreamHandler(nil)
+
+        emitLifecycleEvent(state: "SHUTDOWN")
         result(nil)
     }
 
-    private func handleShutdown(_ result: @escaping FlutterResult) {
-        audioPlayer?.stop()
-        audioPlayer = nil
-        downloadTasks.values.forEach { $0.cancel() }
-        downloadTasks.removeAll()
-        result(nil)
+    // MARK: - Lifecycle Events
+
+    private func emitLifecycleEvent(state: String) {
+        lifecycleEventSink?(["state": state])
+    }
+}
+
+// MARK: - FlutterStreamHandler (for lifecycle)
+extension BackgroundRuntimeMacosPlugin: FlutterStreamHandler {
+    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        lifecycleEventSink = events
+        return nil
+    }
+
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        lifecycleEventSink = nil
+        return nil
     }
 }
