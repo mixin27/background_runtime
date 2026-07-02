@@ -10,7 +10,7 @@ enum PlaybackState {
 
   static PlaybackState fromString(String value) {
     return PlaybackState.values.firstWhere(
-      (e) => e.name == value,
+      (e) => e.name.toLowerCase() == value.toLowerCase(),
       orElse: () => PlaybackState.idle,
     );
   }

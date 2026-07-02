@@ -9,7 +9,7 @@ enum RuntimeLifecycleEvent {
 
   static RuntimeLifecycleEvent fromString(String value) {
     return RuntimeLifecycleEvent.values.firstWhere(
-      (e) => e.name == value,
+      (e) => e.name.toLowerCase() == value.toLowerCase(),
       orElse: () => RuntimeLifecycleEvent.terminated,
     );
   }

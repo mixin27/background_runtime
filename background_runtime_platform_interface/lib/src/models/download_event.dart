@@ -9,7 +9,7 @@ enum DownloadState {
 
   static DownloadState fromString(String value) {
     return DownloadState.values.firstWhere(
-      (e) => e.name == value,
+      (e) => e.name.toLowerCase() == value.toLowerCase(),
       orElse: () => DownloadState.failed,
     );
   }
