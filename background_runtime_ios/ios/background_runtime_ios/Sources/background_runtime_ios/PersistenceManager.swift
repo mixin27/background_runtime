@@ -5,12 +5,12 @@ struct PersistedDownload: Codable {
     let url: String
     let destinationPath: String
     let headersJson: String?
-    let state: String
-    let progress: Int64
-    let totalBytes: Int64
+    var state: String
+    var progress: Int64
+    var totalBytes: Int64
     let saveToPublic: Bool
     let createdAt: Int64
-    let updatedAt: Int64
+    var updatedAt: Int64
 }
 
 struct PersistedAudioTrack: Codable {
@@ -20,8 +20,8 @@ struct PersistedAudioTrack: Codable {
     let album: String?
     let source: String?
     let durationMillis: Int64?
-    let positionMillis: Int64
-    let state: String
+    var positionMillis: Int64
+    var state: String
 }
 
 struct PersistedConfig: Codable {

@@ -258,7 +258,9 @@ public class BackgroundRuntimeIosPlugin: NSObject, FlutterPlugin {
     // MARK: - Lifecycle Events
 
     private func emitLifecycleEvent(state: String) {
-        lifecycleEventSink?(["state": state])
+        DispatchQueue.main.async {
+            self.lifecycleEventSink?(["state": state])
+        }
     }
 }
 
@@ -275,50 +277,8 @@ extension BackgroundRuntimeIosPlugin: FlutterStreamHandler {
     }
 }
 
-// MARK: - FlutterStreamHandler (for download events via DownloadManager)
-extension DownloadManager: FlutterStreamHandler {
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        downloadEventSink = events
-        return nil
-    }
-
-    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        downloadEventSink = nil
-        return nil
-    }
-}
-
-// MARK: - FlutterStreamHandler (for player state via AudioManager)
-extension AudioManager: FlutterStreamHandler {
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        playerStateSink = events
-
-        let persisted = persistence.loadAudioTrack()
-        if let track = persisted {
-            var event: [String: Any] = [
-                "state": track.state,
-                "positionMillis": NSNumber(value: track.positionMillis),
-            ]
-            if let id = track.trackId { event["trackId"] = id }
-            if let title = track.title { event["title"] = title }
-            if let artist = track.artist { event["artist"] = artist }
-            if let album = track.album { event["album"] = album }
-            if let source = track.source { event["source"] = source }
-            if let duration = track.durationMillis { event["durationMillis"] = NSNumber(value: duration) }
-            events(event)
-        }
-
-        return nil
-    }
-
-    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        playerStateSink = nil
-        return nil
-    }
-}
-
-// MARK: - FlutterApplicationDelegate
-extension BackgroundRuntimeIosPlugin: FlutterApplicationDelegate {
+// MARK: - Background URL Session
+extension BackgroundRuntimeIosPlugin {
     public func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) -> Bool {
         if identifier == "dev.mixin27.background_runtime.download" {
             downloadManager.setBackgroundCompletionHandler(completionHandler)

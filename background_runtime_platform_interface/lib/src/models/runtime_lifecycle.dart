@@ -29,7 +29,7 @@ final class RuntimeLifecycle {
 
   Map<String, dynamic> toMap() {
     return {
-      'event': event.name,
+      'state': event.name,
       'timestamp': timestamp.toIso8601String(),
       'data': data,
     };
@@ -37,8 +37,10 @@ final class RuntimeLifecycle {
 
   static RuntimeLifecycle fromMap(Map<String, dynamic> map) {
     return RuntimeLifecycle(
-      event: RuntimeLifecycleEvent.fromString(map['event'] as String),
-      timestamp: DateTime.parse(map['timestamp'] as String),
+      event: RuntimeLifecycleEvent.fromString(map['state'] as String),
+      timestamp: map['timestamp'] != null
+          ? DateTime.parse(map['timestamp'] as String)
+          : DateTime.now(),
       data: map['data'] as Map<String, dynamic>?,
     );
   }

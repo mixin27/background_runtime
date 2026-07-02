@@ -112,12 +112,14 @@ public class BackgroundRuntimeMacosPlugin: NSObject, FlutterPlugin {
         }
 
         if enableAudio {
+            #if !os(macOS)
             do {
                 try AVAudioSession.sharedInstance().setCategory(.playback)
                 try AVAudioSession.sharedInstance().setActive(true)
             } catch {
                 // Audio session setup is best-effort on macOS
             }
+            #endif
         }
 
         if autoResume {
@@ -250,7 +252,9 @@ public class BackgroundRuntimeMacosPlugin: NSObject, FlutterPlugin {
     // MARK: - Lifecycle Events
 
     private func emitLifecycleEvent(state: String) {
-        lifecycleEventSink?(["state": state])
+        DispatchQueue.main.async {
+            self.lifecycleEventSink?(["state": state])
+        }
     }
 }
 

@@ -5,7 +5,7 @@ final class DownloadManager: NSObject {
     private var session: URLSession?
     private var activeTasks: [String: URLSessionDownloadTask] = [:]
     private var resumeDataMap: [String: Data] = [:]
-    private var pendingCompletions: [String: (FlutterResult) -> Void] = [:]
+    private var pendingCompletions: [String: FlutterResult] = [:]
     private let persistence: PersistenceManager
     private weak var notificationManager: NotificationManager?
     private var downloadEventSink: FlutterEventSink?
@@ -65,7 +65,7 @@ final class DownloadManager: NSObject {
         )
         persistence.saveDownload(persisted)
 
-        emitDownloadEvent(taskId: taskId, status: "DOWNLOADING", progress: 0, totalBytes: 0)
+        emitDownloadEvent(taskId: taskId, state: "DOWNLOADING", bytesReceived: 0, totalBytes: -1)
     }
 
     func pauseDownload(taskId: String, completion: @escaping (FlutterResult)) {
@@ -78,7 +78,7 @@ final class DownloadManager: NSObject {
             self?.resumeDataMap[taskId] = resumeData
             self?.activeTasks.removeValue(forKey: taskId)
             self?.updateDownloadState(taskId: taskId, state: "PAUSED")
-            self?.emitDownloadEvent(taskId: taskId, status: "PAUSED", progress: -1, totalBytes: -1)
+            self?.emitDownloadEvent(taskId: taskId, state: "PAUSED", bytesReceived: -1, totalBytes: -1)
             completion(nil)
         }
     }
@@ -89,7 +89,7 @@ final class DownloadManager: NSObject {
             activeTasks[taskId] = task
             task?.resume()
             updateDownloadState(taskId: taskId, state: "DOWNLOADING")
-            emitDownloadEvent(taskId: taskId, status: "DOWNLOADING", progress: -1, totalBytes: -1)
+            emitDownloadEvent(taskId: taskId, state: "DOWNLOADING", bytesReceived: -1, totalBytes: -1)
             completion(nil)
         } else {
             completion(FlutterError(code: "NO_RESUME_DATA", message: "No resume data available", details: nil))
@@ -103,7 +103,7 @@ final class DownloadManager: NSObject {
         pendingCompletions.removeValue(forKey: taskId)
         persistence.removeDownload(taskId: taskId)
         notificationManager?.removeDownloadNotification(taskId: taskId)
-        emitDownloadEvent(taskId: taskId, status: "CANCELLED", progress: -1, totalBytes: -1)
+        emitDownloadEvent(taskId: taskId, state: "CANCELLED", bytesReceived: -1, totalBytes: -1)
         completion(nil)
     }
 
@@ -129,18 +129,42 @@ final class DownloadManager: NSObject {
         }
     }
 
-    private func emitDownloadEvent(taskId: String, status: String, progress: Int64, totalBytes: Int64) {
+    private func resolvePublicFileName(destinationPath: String, url: String) -> String {
+        let basename = (destinationPath as NSString).lastPathComponent
+        if basename.isEmpty { return destinationPath }
+        if basename.contains(".") { return basename }
+        let urlFilename = url
+            .split(separator: "/").last?
+            .split(separator: "?").first
+            .map(String.init) ?? ""
+        if urlFilename.contains(".") { return urlFilename }
+        return basename
+    }
+
+    private func resolvePrivatePath(_ destinationPath: String) -> URL {
+        if destinationPath.hasPrefix("/") {
+            return URL(fileURLWithPath: destinationPath)
+        }
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentsDir.appendingPathComponent(destinationPath)
+    }
+
+    private func emitDownloadEvent(taskId: String, state: String, bytesReceived: Int64, totalBytes: Int64) {
         var event: [String: Any] = [
             "taskId": taskId,
-            "status": status,
+            "state": state,
         ]
-        if progress >= 0 {
-            event["progress"] = NSNumber(value: progress)
-        }
-        if totalBytes >= 0 {
+        if totalBytes > 0 {
+            event["progress"] = Double(bytesReceived) / Double(totalBytes)
+            event["bytesReceived"] = NSNumber(value: bytesReceived)
             event["totalBytes"] = NSNumber(value: totalBytes)
+        } else if bytesReceived >= 0 {
+            event["progress"] = 0.0
+            event["bytesReceived"] = NSNumber(value: bytesReceived)
         }
-        downloadEventSink?(event)
+        DispatchQueue.main.async {
+            self.downloadEventSink?(event)
+        }
     }
 }
 
@@ -157,12 +181,19 @@ extension DownloadManager: URLSessionDownloadDelegate {
         let destinationURL: URL
 
         if persisted.saveToPublic {
-            let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let fileName = (persisted.destinationPath as NSString).lastPathComponent
-            destinationURL = documentsDir.appendingPathComponent(fileName)
+            #if os(macOS)
+            let baseDir = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+            #else
+            let baseDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            #endif
+            let fileName = resolvePublicFileName(destinationPath: persisted.destinationPath, url: persisted.url)
+            destinationURL = baseDir.appendingPathComponent(fileName)
         } else {
-            destinationURL = URL(fileURLWithPath: persisted.destinationPath)
+            destinationURL = resolvePrivatePath(persisted.destinationPath)
         }
+
+        let totalBytesWritten = downloadTask.countOfBytesReceived
+        let totalBytesExpected = downloadTask.countOfBytesExpectedToReceive
 
         do {
             try FileManager.default.createDirectory(
@@ -175,7 +206,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
             try FileManager.default.moveItem(at: location, to: destinationURL)
 
             updateDownloadState(taskId: taskId, state: "COMPLETED")
-            emitDownloadEvent(taskId: taskId, status: "COMPLETED", progress: -1, totalBytes: -1)
+            emitDownloadEvent(taskId: taskId, state: "COMPLETED", bytesReceived: totalBytesWritten, totalBytes: totalBytesExpected)
 
             let fileName = destinationURL.lastPathComponent
             notificationManager?.postDownloadComplete(taskId: taskId, fileName: fileName)
@@ -185,7 +216,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
             }
         } catch {
             updateDownloadState(taskId: taskId, state: "FAILED")
-            emitDownloadEvent(taskId: taskId, status: "FAILED", progress: -1, totalBytes: -1)
+            emitDownloadEvent(taskId: taskId, state: "FAILED", bytesReceived: totalBytesWritten, totalBytes: totalBytesExpected)
 
             let fileName = (persisted.destinationPath as NSString).lastPathComponent
             notificationManager?.postDownloadFailed(taskId: taskId, fileName: fileName)
@@ -203,8 +234,8 @@ extension DownloadManager: URLSessionDownloadDelegate {
 
         emitDownloadEvent(
             taskId: taskId,
-            status: "DOWNLOADING",
-            progress: totalBytesWritten,
+            state: "DOWNLOADING",
+            bytesReceived: totalBytesWritten,
             totalBytes: totalBytesExpectedToWrite
         )
 
@@ -233,8 +264,11 @@ extension DownloadManager: URLSessionDownloadDelegate {
                 return
             }
 
+            let totalBytesWritten = task.countOfBytesReceived
+            let totalBytesExpected = task.countOfBytesExpectedToReceive
+
             updateDownloadState(taskId: taskId, state: "FAILED")
-            emitDownloadEvent(taskId: taskId, status: "FAILED", progress: -1, totalBytes: -1)
+            emitDownloadEvent(taskId: taskId, state: "FAILED", bytesReceived: totalBytesWritten, totalBytes: totalBytesExpected)
 
             let downloads = persistence.loadAllDownloads()
             if let persisted = downloads.first(where: { $0.taskId == taskId }) {

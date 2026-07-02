@@ -15,10 +15,16 @@ final class AudioManager: NSObject {
     private var currentSource: String?
     private var currentDurationMillis: Int64?
 
+    private var progressTimer: Timer?
+
     init(persistence: PersistenceManager) {
         self.persistence = persistence
         super.init()
         setupRemoteCommandCenter()
+    }
+
+    deinit {
+        stopProgressTimer()
     }
 
     func setPlayerStateSink(_ sink: FlutterEventSink?) {
@@ -48,6 +54,7 @@ final class AudioManager: NSObject {
             try AVAudioSession.sharedInstance().setActive(true)
 
             audioPlayer?.play()
+            startProgressTimer()
 
             let positionMillis = Int64(audioPlayer?.currentTime ?? 0) * 1000
             let duration = currentDurationMillis ?? Int64((audioPlayer?.duration ?? 0) * 1000)
@@ -84,6 +91,7 @@ final class AudioManager: NSObject {
 
     func pauseAudio(completion: @escaping (FlutterResult)) {
         audioPlayer?.pause()
+        stopProgressTimer()
         emitPlayerState(state: "PAUSED")
         updateNowPlaying(state: "PAUSED")
         updatePersistedState(state: "PAUSED")
@@ -92,6 +100,7 @@ final class AudioManager: NSObject {
 
     func resumeAudio(completion: @escaping (FlutterResult)) {
         audioPlayer?.play()
+        startProgressTimer()
         emitPlayerState(state: "PLAYING")
         updateNowPlaying(state: "PLAYING")
         updatePersistedState(state: "PLAYING")
@@ -100,6 +109,7 @@ final class AudioManager: NSObject {
 
     func stopAudio(completion: @escaping (FlutterResult)) {
         audioPlayer?.stop()
+        stopProgressTimer()
         audioPlayer = nil
         emitPlayerState(state: "STOPPED")
         clearNowPlaying()
@@ -118,9 +128,33 @@ final class AudioManager: NSObject {
 
     func shutdown() {
         audioPlayer?.stop()
+        stopProgressTimer()
         audioPlayer = nil
         clearNowPlaying()
         clearTrackMetadata()
+    }
+
+    // MARK: - Progress Timer
+
+    private func startProgressTimer() {
+        stopProgressTimer()
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+            self?.onProgressTimerFired()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        progressTimer = timer
+    }
+
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+    }
+
+    private func onProgressTimerFired() {
+        guard let player = audioPlayer, player.isPlaying else { return }
+        let positionMillis = Int64(player.currentTime * 1000)
+        emitPlayerState(state: "PLAYING", positionMillis: positionMillis)
+        updateNowPlaying(state: "PLAYING", positionMillis: positionMillis)
     }
 
     // MARK: - Private
@@ -137,19 +171,28 @@ final class AudioManager: NSObject {
     ) {
         guard let sink = playerStateSink else { return }
 
+        let position = positionMillis ?? Int64((audioPlayer?.currentTime ?? 0) * 1000)
+        let duration = durationMillis ?? currentDurationMillis ?? Int64((audioPlayer?.duration ?? 0) * 1000)
+
         var event: [String: Any] = [
             "state": state,
-            "positionMillis": NSNumber(value: positionMillis ?? Int64((audioPlayer?.currentTime ?? 0) * 1000)),
+            "positionMillis": NSNumber(value: position),
         ]
 
+        if duration > 0 {
+            event["progress"] = Double(position) / Double(duration)
+        }
+
+        event["durationMillis"] = NSNumber(value: duration)
         if let trackId = trackId ?? currentTrackId { event["trackId"] = trackId }
         if let title = title ?? currentTitle { event["title"] = title }
         if let artist = artist ?? currentArtist { event["artist"] = artist }
         if let album = album ?? currentAlbum { event["album"] = album }
         if let source = source ?? currentSource { event["source"] = source }
-        if let durationMillis = durationMillis ?? currentDurationMillis { event["durationMillis"] = NSNumber(value: durationMillis) }
 
-        sink(event)
+        DispatchQueue.main.async {
+            sink(event)
+        }
     }
 
     private func updatePersistedState(state: String) {
@@ -205,6 +248,7 @@ final class AudioManager: NSObject {
 
         commandCenter.playCommand.addTarget { [weak self] _ in
             self?.audioPlayer?.play()
+            self?.startProgressTimer()
             self?.emitPlayerState(state: "PLAYING")
             self?.updateNowPlaying(state: "PLAYING")
             self?.updatePersistedState(state: "PLAYING")
@@ -213,6 +257,7 @@ final class AudioManager: NSObject {
 
         commandCenter.pauseCommand.addTarget { [weak self] _ in
             self?.audioPlayer?.pause()
+            self?.stopProgressTimer()
             self?.emitPlayerState(state: "PAUSED")
             self?.updateNowPlaying(state: "PAUSED")
             self?.updatePersistedState(state: "PAUSED")
@@ -223,11 +268,13 @@ final class AudioManager: NSObject {
             guard let player = self?.audioPlayer else { return .commandFailed }
             if player.isPlaying {
                 player.pause()
+                self?.stopProgressTimer()
                 self?.emitPlayerState(state: "PAUSED")
                 self?.updateNowPlaying(state: "PAUSED")
                 self?.updatePersistedState(state: "PAUSED")
             } else {
                 player.play()
+                self?.startProgressTimer()
                 self?.emitPlayerState(state: "PLAYING")
                 self?.updateNowPlaying(state: "PLAYING")
                 self?.updatePersistedState(state: "PLAYING")
@@ -251,6 +298,7 @@ final class AudioManager: NSObject {
 // MARK: - AVAudioPlayerDelegate
 extension AudioManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        stopProgressTimer()
         emitPlayerState(state: "COMPLETED")
         clearNowPlaying()
         persistence.removeAudioTrack()
@@ -261,7 +309,43 @@ extension AudioManager: AVAudioPlayerDelegate {
         emitPlayerState(state: "ERROR")
         clearNowPlaying()
         if let error = error {
-            playerStateSink?(FlutterError(code: "PLAYBACK_FAILED", message: error.localizedDescription, details: nil))
+            DispatchQueue.main.async {
+                self.playerStateSink?(FlutterError(code: "PLAYBACK_FAILED", message: error.localizedDescription, details: nil))
+            }
         }
+    }
+}
+
+// MARK: - FlutterStreamHandler
+extension AudioManager: FlutterStreamHandler {
+    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        playerStateSink = events
+
+        let persisted = persistence.loadAudioTrack()
+        if let track = persisted {
+            var event: [String: Any] = [
+                "state": track.state,
+                "positionMillis": NSNumber(value: track.positionMillis),
+            ]
+            if let duration = track.durationMillis, duration > 0 {
+                event["progress"] = Double(track.positionMillis) / Double(duration)
+            }
+            if let id = track.trackId { event["trackId"] = id }
+            if let title = track.title { event["title"] = title }
+            if let artist = track.artist { event["artist"] = artist }
+            if let album = track.album { event["album"] = album }
+            if let source = track.source { event["source"] = source }
+            if let duration = track.durationMillis { event["durationMillis"] = NSNumber(value: duration) }
+            DispatchQueue.main.async {
+                events(event)
+            }
+        }
+
+        return nil
+    }
+
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        playerStateSink = nil
+        return nil
     }
 }
