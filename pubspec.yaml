@@ -13,3 +13,4 @@ workspace:
   - background_runtime_windows
   - background_runtime_linux
   - background_runtime_web
+  - example

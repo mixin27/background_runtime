@@ -39,6 +39,27 @@ final class BackgroundRuntimeConfig {
     );
   }
 
+  BackgroundRuntimeConfig copyWith({
+    bool? enableDownloads,
+    bool? enableAudio,
+    bool? enableForegroundService,
+    bool? enableNotifications,
+    String? notificationChannelId,
+    String? notificationChannelName,
+  }) {
+    return BackgroundRuntimeConfig(
+      enableDownloads: enableDownloads ?? this.enableDownloads,
+      enableAudio: enableAudio ?? this.enableAudio,
+      enableForegroundService:
+          enableForegroundService ?? this.enableForegroundService,
+      enableNotifications: enableNotifications ?? this.enableNotifications,
+      notificationChannelId:
+          notificationChannelId ?? this.notificationChannelId,
+      notificationChannelName:
+          notificationChannelName ?? this.notificationChannelName,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
