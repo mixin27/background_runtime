@@ -1,7 +1,7 @@
 plugins {
     id("com.android.library") version "8.11.1"
-    id("org.jetbrains.kotlin.android") version "2.2.20"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.20"
+    id("org.jetbrains.kotlin.android") version "2.0.21"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
 }
 
 group = "dev.mixin27.background_runtime_android"
@@ -51,7 +51,18 @@ android {
     }
 }
 
+val flutterSdk = project.findProperty("flutter.sdk")?.toString()
+    ?: File(project.rootDir, "local.properties").takeIf { it.exists() }?.let { file ->
+        file.readLines().firstOrNull { it.startsWith("flutter.sdk") }?.substringAfter("=")?.trim()
+    }
+
+val flutterEngineJar: String? = flutterSdk?.let { sdk ->
+    fileTree("$sdk/bin/cache/artifacts/engine/android-arm64").matching { include("flutter.jar") }.firstOrNull()?.absolutePath
+}
+
 dependencies {
+    flutterEngineJar?.let { compileOnly(files(it)) }
+
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
@@ -60,8 +71,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-session:1.5.1")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
+    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
     implementation("androidx.lifecycle:lifecycle-service:2.8.7")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     testImplementation("org.jetbrains.kotlin:kotlin-test")

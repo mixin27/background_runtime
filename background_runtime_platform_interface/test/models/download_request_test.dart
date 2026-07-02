@@ -43,6 +43,19 @@ void main() {
       expect(restored.headers, original.headers);
       expect(restored.allowCellular, original.allowCellular);
       expect(restored.allowMetered, original.allowMetered);
+      expect(restored.saveToPublic, original.saveToPublic);
+    });
+
+    test('serializes saveToPublic flag', () {
+      const original = DownloadRequest(
+        url: 'https://example.com/file.zip',
+        destinationPath: 'file.zip',
+        saveToPublic: true,
+      );
+      final map = original.toMap();
+      final restored = DownloadRequest.fromMap(map);
+      expect(restored.destinationPath, 'file.zip');
+      expect(restored.saveToPublic, isTrue);
     });
 
     test('value equality', () {

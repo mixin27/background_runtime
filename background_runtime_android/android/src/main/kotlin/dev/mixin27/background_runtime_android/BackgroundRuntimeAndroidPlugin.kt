@@ -5,11 +5,10 @@ import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugin.common.EventChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,7 +51,7 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         scope.cancel()
     }
 
-    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: MethodChannel.Result) {
         when (call.method) {
             "initialize" -> handleInitialize(call, result)
             "startDownload" -> handleStartDownload(call, result)
@@ -69,7 +68,7 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handleInitialize(call: MethodCall, result: Result) {
+    private fun handleInitialize(call: MethodCall, result: MethodChannel.Result) {
         scope.launch {
             try {
                 val config = call.argument<Map<String, Any?>>("config")
@@ -81,7 +80,7 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handleStartDownload(call: MethodCall, result: Result) {
+    private fun handleStartDownload(call: MethodCall, result: MethodChannel.Result) {
         scope.launch {
             try {
                 val request = call.argument<Map<String, Any?>>("request")
@@ -93,11 +92,11 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handlePauseDownload(call: MethodCall, result: Result) {
+    private fun handlePauseDownload(call: MethodCall, result: MethodChannel.Result) {
         scope.launch {
             try {
                 val taskId = call.argument<String>("taskId")
-                DownloadManager.pauseDownload(taskId!!)
+                DownloadManager.pauseDownload(context, taskId!!)
                 result.success(null)
             } catch (e: Exception) {
                 result.error("DOWNLOAD_FAILED", e.message, null)
@@ -105,11 +104,11 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handleResumeDownload(call: MethodCall, result: Result) {
+    private fun handleResumeDownload(call: MethodCall, result: MethodChannel.Result) {
         scope.launch {
             try {
                 val taskId = call.argument<String>("taskId")
-                DownloadManager.resumeDownload(taskId!!)
+                DownloadManager.resumeDownload(context, taskId!!)
                 result.success(null)
             } catch (e: Exception) {
                 result.error("DOWNLOAD_FAILED", e.message, null)
@@ -117,11 +116,11 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handleCancelDownload(call: MethodCall, result: Result) {
+    private fun handleCancelDownload(call: MethodCall, result: MethodChannel.Result) {
         scope.launch {
             try {
                 val taskId = call.argument<String>("taskId")
-                DownloadManager.cancelDownload(taskId!!)
+                DownloadManager.cancelDownload(context, taskId!!)
                 result.success(null)
             } catch (e: Exception) {
                 result.error("DOWNLOAD_FAILED", e.message, null)
@@ -129,7 +128,7 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handlePlayAudio(call: MethodCall, result: Result) {
+    private fun handlePlayAudio(call: MethodCall, result: MethodChannel.Result) {
         scope.launch {
             try {
                 val track = call.argument<Map<String, Any?>>("track")
@@ -141,28 +140,34 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
         }
     }
 
-    private fun handlePauseAudio(result: Result) {
-        AudioPlayerManager.pause()
-        result.success(null)
+    private fun handlePauseAudio(result: MethodChannel.Result) {
+        scope.launch {
+            AudioPlayerManager.pause(context)
+            result.success(null)
+        }
     }
 
-    private fun handleResumeAudio(result: Result) {
-        AudioPlayerManager.resume()
-        result.success(null)
+    private fun handleResumeAudio(result: MethodChannel.Result) {
+        scope.launch {
+            AudioPlayerManager.resume(context)
+            result.success(null)
+        }
     }
 
-    private fun handleStopAudio(result: Result) {
-        AudioPlayerManager.stop()
-        result.success(null)
+    private fun handleStopAudio(result: MethodChannel.Result) {
+        scope.launch {
+            AudioPlayerManager.stop(context)
+            result.success(null)
+        }
     }
 
-    private fun handleSeekAudio(call: MethodCall, result: Result) {
+    private fun handleSeekAudio(call: MethodCall, result: MethodChannel.Result) {
         val positionMillis = call.argument<Long>("positionMillis") ?: 0L
         AudioPlayerManager.seek(positionMillis)
         result.success(null)
     }
 
-    private fun handleShutdown(result: Result) {
+    private fun handleShutdown(result: MethodChannel.Result) {
         scope.launch {
             try {
                 BackgroundRuntimeServiceManager.shutdown(context)
