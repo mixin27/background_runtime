@@ -15,7 +15,7 @@ let package = Package(
             name: "background_runtime_ios",
             dependencies: [],
             resources: [
-                // .process("PrivacyInfo.xcprivacy"),
+                .process("PrivacyInfo.xcprivacy"),
             ]
         )
     ]
