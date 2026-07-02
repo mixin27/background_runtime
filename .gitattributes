@@ -1,0 +1,43 @@
+# Auto-detect text files
+* text=auto
+
+# Source code
+*.dart text
+*.kt text
+*.kts text
+*.swift text
+*.cc text
+*.h text
+*.c text
+*.cmake text
+*.py text
+
+# Markup
+*.md text
+*.yaml text diff=yaml
+*.yml text diff=yaml
+*.xml text
+*.json text
+
+# Shell
+*.sh text
+*.zsh text
+
+# Diff
+*.dart diff=dart
+*.yaml diff=yaml
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.icns binary
+*.ico binary
+*.jar binary
+*.keystore binary
+
+# Generated files
+pubspec.lock -diff
+*.freezed.dart -diff
+*.g.dart -diff

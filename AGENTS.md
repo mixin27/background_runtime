@@ -580,3 +580,42 @@ A feature is complete only if:
 ✓ Cross-platform API maintained
 
 If any item is missing, the feature is not complete.
+
+---
+
+# Monorepo Management
+
+## Makefile
+
+Use `make` for common operations from the repo root:
+
+```bash
+make            # get + analyze + test
+make analyze    # dart analyze (workspace)
+make test       # test platform_interface + app package
+make clean      # remove build artifacts
+make outdated   # check outdated deps
+```
+
+## Shell Scripts
+
+- `tool/publish.sh` — Publish all packages to pub.dev in dependency order. Supports `--dry-run`.
+- `tool/version.sh <version>` — Bump version across all 8 packages and update inter-package constraints. Example: `./tool/version.sh 0.2.0`.
+
+## CI Workflows
+
+- `.github/workflows/ci.yml` — Runs on push/PR to main. Jobs: analyze, test matrix (platform_interface + app), SwiftPM (iOS + macOS), CMake (Windows + Linux), Android build.
+- `.github/workflows/publish.yml` — Manual dispatch or release-triggered publishing with dry-run support. Requires `PUB_CREDENTIALS` secret.
+
+## Publish Order
+
+Always publish in dependency order:
+
+1. `background_runtime_platform_interface`
+2. `background_runtime_android`
+3. `background_runtime_ios`
+4. `background_runtime_macos`
+5. `background_runtime_windows`
+6. `background_runtime_linux`
+7. `background_runtime_web`
+8. `background_runtime`

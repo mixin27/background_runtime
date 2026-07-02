@@ -1,7 +1,6 @@
 name: background_runtime
 description: A production-grade federated Flutter plugin for long-running background execution.
 version: 0.1.0
-publish_to: none
 homepage: https://github.com/mixin27/background_runtime
 repository: https://github.com/mixin27/background_runtime
 issue_tracker: https://github.com/mixin27/background_runtime/issues
@@ -9,26 +8,19 @@ issue_tracker: https://github.com/mixin27/background_runtime/issues
 resolution: workspace
 
 environment:
-  sdk: ^3.11.0
-  flutter: ^3.41.0
+  sdk: ^3.5.0
+  flutter: ">=3.22.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  background_runtime_platform_interface:
-    path: ../background_runtime_platform_interface
-  background_runtime_android:
-    path: ../background_runtime_android
-  background_runtime_ios:
-    path: ../background_runtime_ios
-  background_runtime_macos:
-    path: ../background_runtime_macos
-  background_runtime_windows:
-    path: ../background_runtime_windows
-  background_runtime_linux:
-    path: ../background_runtime_linux
-  background_runtime_web:
-    path: ../background_runtime_web
+  background_runtime_platform_interface: ^0.1.0
+  background_runtime_android: ^0.1.0
+  background_runtime_ios: ^0.1.0
+  background_runtime_macos: ^0.1.0
+  background_runtime_windows: ^0.1.0
+  background_runtime_linux: ^0.1.0
+  background_runtime_web: ^0.1.0
 
 dev_dependencies:
   flutter_lints: ^5.0.0

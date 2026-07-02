@@ -1,25 +1,23 @@
 name: background_runtime_web
 description: Web implementation of the background_runtime plugin.
 version: 0.1.0
-publish_to: none
 homepage: https://github.com/mixin27/background_runtime
 repository: https://github.com/mixin27/background_runtime
-issue_tracker: https://github.com/mixin27/background_runtime/issues
 
 resolution: workspace
 
 environment:
-  sdk: ^3.11.0
-  flutter: ^3.41.0
+  sdk: ^3.5.0
+  flutter: ">=3.22.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  background_runtime_platform_interface:
-    path: ../background_runtime_platform_interface
+  background_runtime_platform_interface: ^0.1.0
 
 flutter:
   plugin:
+    implements: background_runtime
     platforms:
       web:
         pluginClass: BackgroundRuntimeWebPlugin

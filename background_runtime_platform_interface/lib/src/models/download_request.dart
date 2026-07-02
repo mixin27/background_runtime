@@ -62,8 +62,14 @@ final class DownloadRequest {
 
   @override
   int get hashCode =>
-      Object.hash(url, destinationPath, headers, allowCellular, allowMetered,
-          saveToPublic);
+      Object.hash(
+        url,
+        destinationPath,
+        headers,
+        allowCellular,
+        allowMetered,
+        saveToPublic,
+      );
 
   @override
   String toString() =>

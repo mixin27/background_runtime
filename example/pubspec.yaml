@@ -6,13 +6,12 @@ version: 1.0.0+1
 resolution: workspace
 
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.5.0
 
 dependencies:
   flutter:
     sdk: flutter
-  background_runtime:
-    path: ../background_runtime
+  background_runtime: ^0.1.0
 
 dev_dependencies:
   flutter_test:

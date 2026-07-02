@@ -21,15 +21,18 @@ final class BackgroundRuntimeLinuxPlugin extends BackgroundRuntimePlatform {
         _downloadEventChannel =
             downloadEventChannel ??
             const EventChannel(
-                'dev.mixin27.background_runtime/downloadEvents'),
+              'dev.mixin27.background_runtime/downloadEvents',
+            ),
         _playerStateChannel =
             playerStateChannel ??
             const EventChannel(
-                'dev.mixin27.background_runtime/playerState'),
+              'dev.mixin27.background_runtime/playerState',
+            ),
         _lifecycleEventChannel =
             lifecycleEventChannel ??
             const EventChannel(
-                'dev.mixin27.background_runtime/lifecycleEvents');
+              'dev.mixin27.background_runtime/lifecycleEvents',
+            );
 
   @override
   Future<void> initialize(BackgroundRuntimeConfig config) async {
@@ -125,7 +128,8 @@ final class BackgroundRuntimeLinuxPlugin extends BackgroundRuntimePlatform {
     return _lifecycleEventChannel
         .receiveBroadcastStream()
         .map(
-            (event) => RuntimeLifecycle.fromMap((event as Map).cast<String, dynamic>()));
+          (event) => RuntimeLifecycle.fromMap((event as Map).cast<String, dynamic>()),
+        );
   }
 
   @override

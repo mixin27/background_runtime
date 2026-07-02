@@ -116,7 +116,8 @@ final class MethodChannelBackgroundRuntime extends BackgroundRuntimePlatform {
     return _lifecycleEventChannel
         .receiveBroadcastStream()
         .map(
-            (event) => RuntimeLifecycle.fromMap((event as Map).cast<String, dynamic>()));
+          (event) => RuntimeLifecycle.fromMap((event as Map).cast<String, dynamic>()),
+        );
   }
 
   @override

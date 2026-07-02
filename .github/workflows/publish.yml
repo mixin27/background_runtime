@@ -1,0 +1,36 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to publish (or "all")'
+        required: true
+        default: all
+      dry_run:
+        description: 'Dry run only (no actual publish)'
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    name: Publish ${{ github.event.inputs.package || 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.repository_owner == 'mixin27'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: dart pub get
+      - name: Dry run
+        if: ${{ github.event.inputs.dry_run == 'true' || github.event_name == 'workflow_dispatch' }}
+        run: ./tool/publish.sh --dry-run
+      - name: Publish all
+        if: ${{ github.event_name == 'release' && github.event.inputs.dry_run != 'true' }}
+        run: ./tool/publish.sh
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
