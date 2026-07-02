@@ -18,7 +18,7 @@ enum DownloadState {
 /// An event emitted during the lifecycle of a download task.
 final class DownloadEvent {
   final String taskId;
-  final String url;
+  final String? url;
   final DownloadState state;
   final double? progress;
   final int? bytesReceived;
@@ -28,7 +28,7 @@ final class DownloadEvent {
 
   const DownloadEvent({
     required this.taskId,
-    required this.url,
+    this.url,
     required this.state,
     this.progress,
     this.bytesReceived,
@@ -40,20 +40,20 @@ final class DownloadEvent {
   Map<String, dynamic> toMap() {
     return {
       'taskId': taskId,
-      'url': url,
+      if (url != null) 'url': url,
       'state': state.name,
-      'progress': progress,
-      'bytesReceived': bytesReceived,
-      'totalBytes': totalBytes,
-      'errorCode': errorCode,
-      'errorMessage': errorMessage,
+      if (progress != null) 'progress': progress,
+      if (bytesReceived != null) 'bytesReceived': bytesReceived,
+      if (totalBytes != null) 'totalBytes': totalBytes,
+      if (errorCode != null) 'errorCode': errorCode,
+      if (errorMessage != null) 'errorMessage': errorMessage,
     };
   }
 
   static DownloadEvent fromMap(Map<String, dynamic> map) {
     return DownloadEvent(
       taskId: map['taskId'] as String,
-      url: map['url'] as String,
+      url: map['url'] as String?,
       state: DownloadState.fromString(map['state'] as String),
       progress: (map['progress'] as num?)?.toDouble(),
       bytesReceived: map['bytesReceived'] as int?,
@@ -91,5 +91,5 @@ final class DownloadEvent {
 
   @override
   String toString() =>
-      'DownloadEvent(taskId: $taskId, state: $state, progress: $progress)';
+      'DownloadEvent(taskId: $taskId, url: $url, state: $state, progress: $progress)';
 }

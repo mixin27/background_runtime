@@ -75,6 +75,7 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         db.audioTrackDao.upsertTrack(entity)
 
         emitState("PLAYING")
+        BackgroundRuntimeService.updateAudioNotification(title ?: source, artist ?: "Unknown Artist", true)
     }
 
     suspend fun pause(context: Context) {
@@ -85,6 +86,7 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         }
         db.audioTrackDao.updateState("PAUSED")
         emitState("PAUSED")
+        BackgroundRuntimeService.removeAudioNotification()
     }
 
     suspend fun resume(context: Context) {
@@ -92,6 +94,12 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         val db = DatabaseProvider.getDatabase(context)
         db.audioTrackDao.updateState("PLAYING")
         emitState("PLAYING")
+        val track = currentTrack
+        if (track != null) {
+            val title = track["title"] as? String ?: (track["source"] as? String ?: "Audio")
+            val artist = track["artist"] as? String ?: "Unknown Artist"
+            BackgroundRuntimeService.updateAudioNotification(title, artist, true)
+        }
     }
 
     suspend fun stop(context: Context) {
@@ -104,6 +112,7 @@ internal object AudioPlayerManager : EventChannel.StreamHandler {
         val db = DatabaseProvider.getDatabase(context)
         db.audioTrackDao.deleteCurrentTrack()
         emitState("STOPPED")
+        BackgroundRuntimeService.removeAudioNotification()
     }
 
     fun seek(positionMillis: Long) {

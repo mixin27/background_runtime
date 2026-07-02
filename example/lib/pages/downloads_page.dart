@@ -131,12 +131,12 @@ class _DownloadsPageState extends State<DownloadsPage> {
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              event.url,
-                              style: theme.textTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              child: Text(
+                                event.url ?? '',
+                                style: theme.textTheme.bodySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                           ),
                         ],
                       ),

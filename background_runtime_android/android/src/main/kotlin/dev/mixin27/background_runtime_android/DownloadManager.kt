@@ -36,7 +36,8 @@ internal object DownloadManager : EventChannel.StreamHandler {
         eventSink = null
     }
 
-    private suspend fun emitProgress(taskId: String, bytesReceived: Long, totalBytes: Long) {
+    private suspend fun emitProgress(taskId: String, bytesReceived: Long, totalBytes: Long, context: Context) {
+        BackgroundRuntimeService.updateDownloadNotification(taskId, bytesReceived, totalBytes)
         withContext(Dispatchers.Main) {
             eventSink?.success(
                 mapOf(
@@ -50,6 +51,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
     }
 
     private suspend fun emitCompleted(taskId: String, bytesReceived: Long, totalBytes: Long) {
+        BackgroundRuntimeService.updateDownloadCompleteNotification(taskId)
         withContext(Dispatchers.Main) {
             eventSink?.success(
                 mapOf(
@@ -63,6 +65,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
     }
 
     private suspend fun emitPaused(taskId: String, bytesReceived: Long, totalBytes: Long) {
+        BackgroundRuntimeService.updateDownloadPausedNotification(taskId)
         withContext(Dispatchers.Main) {
             eventSink?.success(
                 mapOf(
@@ -76,6 +79,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
     }
 
     private suspend fun emitFailed(taskId: String, error: String) {
+        BackgroundRuntimeService.updateDownloadFailedNotification(taskId)
         withContext(Dispatchers.Main) {
             eventSink?.success(
                 mapOf(
@@ -113,6 +117,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
 
         activeDownloads[taskId] = DownloadState.DOWNLOADING
         publicDownloads[taskId] = saveToPublic
+        BackgroundRuntimeService.resetNotification()
 
         val db = DatabaseProvider.getDatabase(context)
         db.downloadDao.insertDownload(entity)
@@ -204,7 +209,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
 
                 outputStream.write(buffer, 0, bytesRead)
                 totalBytesRead += bytesRead
-                emitProgress(taskId, totalBytesRead, contentLength)
+                emitProgress(taskId, totalBytesRead, contentLength, context)
             }
         } catch (e: Exception) {
             outputStream.close()
@@ -246,6 +251,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
         if (state == DownloadState.PAUSED) {
             pausedDownloads.remove(taskId)
             activeDownloads[taskId] = DownloadState.DOWNLOADING
+            BackgroundRuntimeService.resetNotification()
             val db = DatabaseProvider.getDatabase(context)
             db.downloadDao.updateState(taskId, DownloadState.DOWNLOADING.name, System.currentTimeMillis())
         }
@@ -255,6 +261,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
         val saveToPublic = publicDownloads[taskId] ?: false
         activeDownloads[taskId] = DownloadState.CANCELLED
         pausedDownloads.remove(taskId)
+        BackgroundRuntimeService.resetNotification()
         val db = DatabaseProvider.getDatabase(context)
         val download = db.downloadDao.getDownload(taskId)
         if (download != null) {
