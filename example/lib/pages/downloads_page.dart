@@ -36,7 +36,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
     text: 'https://github.com/flutter/flutter/archive/refs/heads/main.zip',
   );
   final _pathController =
-      TextEditingController(text: '/tmp/background_runtime_download');
+      TextEditingController(text: 'downloads/background_runtime_download');
   bool _saveToPublic = false;
 
   @override

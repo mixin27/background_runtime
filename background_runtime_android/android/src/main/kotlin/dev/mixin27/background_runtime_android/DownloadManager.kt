@@ -129,6 +129,12 @@ internal object DownloadManager : EventChannel.StreamHandler {
         return taskId
     }
 
+    private fun resolvePrivatePath(context: Context, destinationPath: String): File {
+        val file = File(destinationPath)
+        if (file.isAbsolute) return file
+        return File(context.filesDir, destinationPath)
+    }
+
     private fun resolveOutputStream(
         context: Context,
         destinationPath: String,
@@ -140,18 +146,19 @@ internal object DownloadManager : EventChannel.StreamHandler {
             PublicStorageResolver.resolveOutputStream(context, fileName)
                 ?: throw RuntimeException("Failed to open public storage output stream")
         } else {
-            val file = File(destinationPath)
+            val file = resolvePrivatePath(context, destinationPath)
             file.parentFile?.mkdirs()
             FileOutputStream(file)
         }
     }
 
     private fun resolveFileForCleanup(
+        context: Context,
         destinationPath: String,
         saveToPublic: Boolean
     ): File? {
         if (saveToPublic) return null
-        return File(destinationPath)
+        return resolvePrivatePath(context, destinationPath)
     }
 
     private suspend fun performDownload(
@@ -235,7 +242,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
                 .ifEmpty { destinationPath }
             PublicStorageResolver.deletePending(context, fileName)
         } else {
-            resolveFileForCleanup(destinationPath, false)?.delete()
+            resolveFileForCleanup(context, destinationPath, false)?.delete()
         }
     }
 

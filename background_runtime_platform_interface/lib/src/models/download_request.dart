@@ -1,10 +1,13 @@
 /// Parameters for starting a file download task.
 ///
-/// By default files are saved to the [destinationPath] in app-private storage.
-/// Set [saveToPublic] to `true` to save to a user-visible public directory
+/// When [saveToPublic] is `true`, [destinationPath] is treated as a filename
+/// and the platform resolves the appropriate public directory
 /// (e.g., the Downloads folder on Android/iOS, ~/Downloads on desktop).
-/// When [saveToPublic] is `true`, [destinationPath] is treated as a relative
-/// filename and the platform resolves the appropriate public directory.
+///
+/// When [saveToPublic] is `false`, [destinationPath] is treated as a relative
+/// path resolved under the app's private storage directory
+/// (e.g., `context.filesDir` on Android). Absolute paths are used as-is but
+/// should be avoided for portability.
 final class DownloadRequest {
   final String url;
   final String destinationPath;
