@@ -1,6 +1,10 @@
 name: background_runtime_workspace
 publish_to: none
 description: A production-grade federated Flutter plugin for long-running background execution.
+homepage: https://github.com/mixin27/background_runtime
+repository: https://github.com/mixin27/background_runtime
+issue_tracker: https://github.com/mixin27/background_runtime/issues
+
 environment:
   sdk: ^3.11.0
 

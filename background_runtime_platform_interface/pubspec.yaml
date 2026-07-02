@@ -3,6 +3,7 @@ description: Platform interface for the background_runtime Flutter plugin.
 version: 0.1.0
 homepage: https://github.com/mixin27/background_runtime
 repository: https://github.com/mixin27/background_runtime
+issue_tracker: https://github.com/mixin27/background_runtime/issues
 
 resolution: workspace
 
