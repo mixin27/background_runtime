@@ -12,7 +12,7 @@ If you discover a security vulnerability, please report it privately.
 
 **Do not** open a public issue.
 
-Send details to **kyawzayartun.mm@gmail.com**.
+Send details to **kyawzayartun.contact@gmail.com**.
 
 Please include:
 
