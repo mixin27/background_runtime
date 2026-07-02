@@ -71,8 +71,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - working-directory: background_runtime_windows/windows
-        run: cmake -B build -S . -G "Visual Studio 17 2022"
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Validate CMakeLists.txt (configure only)
+        working-directory: background_runtime_windows/windows
+        run: cmake -B build -S . -G Ninja
 
   cmake_linux:
     name: Linux CMake
@@ -83,7 +85,8 @@ jobs:
       - run: |
           sudo apt-get update && sudo apt-get install -y \
             cmake libgtk-3-dev pkg-config
-      - working-directory: background_runtime_linux/linux
+      - name: Validate CMakeLists.txt (configure only)
+        working-directory: background_runtime_linux/linux
         run: cmake -B build -S .
 
   android_build:

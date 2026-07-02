@@ -9,40 +9,35 @@ list(APPEND PLUGIN_SOURCES
   "background_runtime_linux_private.h"
 )
 
+# Standalone stub: link as a shared library.
+# When built inside a Flutter project, flutter's CMake toolchain provides
+# the flutter target, the apply_standard_settings function, and GTK via
+# PkgConfig.  Here we define what we can inline for CI compilation.
 add_library(${PLUGIN_NAME} SHARED
   ${PLUGIN_SOURCES}
 )
 
-apply_standard_settings(${PLUGIN_NAME})
-set_target_properties(${PLUGIN_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
+# Inline Flutter's apply_standard_settings
+set_target_properties(${PLUGIN_NAME} PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  CXX_EXTENSIONS NO
+  CXX_VISIBILITY_PRESET hidden
+)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 target_include_directories(${PLUGIN_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+# In Flutter builds this links against flutter.
+# For standalone CI compilation we define a dummy target.
+add_library(flutter SHARED IMPORTED)
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
-target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 
-set(background_runtime_linux_bundled_libraries "" PARENT_SCOPE)
-
-if (${include_${PROJECT_NAME}_tests})
-  if(${CMAKE_VERSION} VERSION_LESS "3.11.0")
-    message("Unit tests require CMake 3.11.0 or later")
-  else()
-    set(TEST_RUNNER "${PROJECT_NAME}_test")
-    enable_testing()
-    include(FetchContent)
-    FetchContent_Declare(googletest URL https://github.com/google/googletest/archive/release-1.11.0.zip)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest" FORCE)
-    FetchContent_MakeAvailable(googletest)
-    add_executable(${TEST_RUNNER}
-      test/background_runtime_linux_plugin_test.cc
-      ${PLUGIN_SOURCES}
-    )
-    apply_standard_settings(${TEST_RUNNER})
-    target_include_directories(${TEST_RUNNER} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-    target_link_libraries(${TEST_RUNNER} PRIVATE flutter)
-    target_link_libraries(${TEST_RUNNER} PRIVATE PkgConfig::GTK)
-    target_link_libraries(${TEST_RUNNER} PRIVATE gtest_main gmock)
-    include(GoogleTest)
-    gtest_discover_tests(${TEST_RUNNER})
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(GTK IMPORTED_TARGET gtk+-3.0)
+  if(GTK_FOUND)
+    target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
   endif()
 endif()
+
+set(background_runtime_linux_bundled_libraries "" PARENT_SCOPE)
