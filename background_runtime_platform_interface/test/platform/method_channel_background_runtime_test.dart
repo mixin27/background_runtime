@@ -7,7 +7,7 @@ void main() {
 
   group('MethodChannelBackgroundRuntime', () {
     late MethodChannelBackgroundRuntime runtime;
-    const methodChannel = MethodChannel('com.anomalyco.background_runtime/method');
+    const methodChannel = MethodChannel('dev.mixin27.background_runtime/method');
 
     setUp(() {
       runtime = MethodChannelBackgroundRuntime();

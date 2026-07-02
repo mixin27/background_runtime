@@ -19,7 +19,7 @@ using flutter::EncodableValue;
 void BackgroundRuntimeWindowsPlugin::RegisterWithRegistrar(
     flutter::PluginRegistrarWindows *registrar) {
   auto channel = std::make_unique<flutter::MethodChannel<EncodableValue>>(
-      registrar->messenger(), "com.anomalyco.background_runtime/method",
+      registrar->messenger(), "dev.mixin27.background_runtime/method",
       &flutter::StandardMethodCodec::GetInstance());
 
   auto plugin = std::make_unique<BackgroundRuntimeWindowsPlugin>();

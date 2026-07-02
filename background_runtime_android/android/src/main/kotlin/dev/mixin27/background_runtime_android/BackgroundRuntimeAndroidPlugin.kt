@@ -28,20 +28,20 @@ class BackgroundRuntimeAndroidPlugin : FlutterPlugin, MethodCallHandler, Activit
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onAttachedToEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(binding.binaryMessenger, "com.anomalyco.background_runtime/method")
+        channel = MethodChannel(binding.binaryMessenger, "dev.mixin27.background_runtime/method")
         channel.setMethodCallHandler(this)
 
         downloadEventChannel = EventChannel(
             binding.binaryMessenger,
-            "com.anomalyco.background_runtime/downloadEvents"
+            "dev.mixin27.background_runtime/downloadEvents"
         )
         playerStateEventChannel = EventChannel(
             binding.binaryMessenger,
-            "com.anomalyco.background_runtime/playerState"
+            "dev.mixin27.background_runtime/playerState"
         )
         lifecycleEventChannel = EventChannel(
             binding.binaryMessenger,
-            "com.anomalyco.background_runtime/lifecycleEvents"
+            "dev.mixin27.background_runtime/lifecycleEvents"
         )
 
         context = binding.applicationContext

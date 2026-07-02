@@ -17,19 +17,19 @@ final class BackgroundRuntimeMacosPlugin extends BackgroundRuntimePlatform {
     EventChannel? lifecycleEventChannel,
   })  : _methodChannel =
             methodChannel ??
-            const MethodChannel('com.anomalyco.background_runtime/method'),
+            const MethodChannel('dev.mixin27.background_runtime/method'),
         _downloadEventChannel =
             downloadEventChannel ??
             const EventChannel(
-                'com.anomalyco.background_runtime/downloadEvents'),
+                'dev.mixin27.background_runtime/downloadEvents'),
         _playerStateChannel =
             playerStateChannel ??
             const EventChannel(
-                'com.anomalyco.background_runtime/playerState'),
+                'dev.mixin27.background_runtime/playerState'),
         _lifecycleEventChannel =
             lifecycleEventChannel ??
             const EventChannel(
-                'com.anomalyco.background_runtime/lifecycleEvents');
+                'dev.mixin27.background_runtime/lifecycleEvents');
 
   @override
   Future<void> initialize(BackgroundRuntimeConfig config) async {

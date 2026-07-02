@@ -8,7 +8,7 @@ public class BackgroundRuntimeMacosPlugin: NSObject, FlutterPlugin {
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
-            name: "com.anomalyco.background_runtime/method",
+            name: "dev.mixin27.background_runtime/method",
             binaryMessenger: registrar.messenger
         )
         let instance = BackgroundRuntimeMacosPlugin()

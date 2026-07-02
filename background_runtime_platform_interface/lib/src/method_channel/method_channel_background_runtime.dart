@@ -12,11 +12,11 @@ import '../models/runtime_lifecycle.dart';
 import '../platform/background_runtime_platform.dart';
 
 /// Method channel names.
-const _methodChannelName = 'com.anomalyco.background_runtime/method';
-const _downloadEventChannelName = 'com.anomalyco.background_runtime/downloadEvents';
-const _playerStateChannelName = 'com.anomalyco.background_runtime/playerState';
+const _methodChannelName = 'dev.mixin27.background_runtime/method';
+const _downloadEventChannelName = 'dev.mixin27.background_runtime/downloadEvents';
+const _playerStateChannelName = 'dev.mixin27.background_runtime/playerState';
 const _lifecycleEventChannelName =
-    'com.anomalyco.background_runtime/lifecycleEvents';
+    'dev.mixin27.background_runtime/lifecycleEvents';
 
 /// The default [BackgroundRuntimePlatform] that communicates with native code
 /// via Flutter's [MethodChannel] and [EventChannel].
