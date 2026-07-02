@@ -112,9 +112,14 @@ class _DownloadsPageState extends State<DownloadsPage> {
               final state = event.state;
               final bytesReceived = event.bytesReceived;
               final totalBytes = event.totalBytes;
-              final progressStr = bytesReceived != null && totalBytes != null
-                  ? '${(bytesReceived / 1048576).toStringAsFixed(1)} MB / ${(totalBytes / 1048576).toStringAsFixed(1)} MB'
+              final progressValue = (bytesReceived != null && totalBytes != null && totalBytes > 0)
+                  ? (bytesReceived / totalBytes).clamp(0.0, 1.0)
                   : null;
+              final progressStr = bytesReceived != null && totalBytes != null && totalBytes > 0
+                  ? '${(bytesReceived / 1048576).toStringAsFixed(1)} MB / ${(totalBytes / 1048576).toStringAsFixed(1)} MB'
+                  : bytesReceived != null
+                      ? '${(bytesReceived / 1048576).toStringAsFixed(1)} MB downloaded'
+                      : null;
 
               return Card(
                 child: Padding(
@@ -140,12 +145,14 @@ class _DownloadsPageState extends State<DownloadsPage> {
                           ),
                         ],
                       ),
-                      if (progressStr != null) ...[
+                      if (progressStr != null &&
+                          (state == DownloadState.downloading ||
+                           state == DownloadState.paused)) ...[
                         const SizedBox(height: 4),
                         Text(progressStr, style: theme.textTheme.bodySmall),
                         const SizedBox(height: 4),
                         LinearProgressIndicator(
-                          value: event.progress?.clamp(0.0, 1.0),
+                          value: progressValue,
                         ),
                       ],
                       const SizedBox(height: 8),
@@ -167,15 +174,16 @@ class _DownloadsPageState extends State<DownloadsPage> {
                                   widget.onResume(event.taskId),
                             ),
                           if (state == DownloadState.downloading ||
-                              state == DownloadState.paused)
+                              state == DownloadState.paused) ...[
                             const SizedBox(width: 8),
-                          _SmallButton(
-                            icon: Icons.cancel,
-                            label: 'Cancel',
-                            color: Colors.red,
-                            onPressed: () =>
-                                widget.onCancel(event.taskId),
-                          ),
+                            _SmallButton(
+                              icon: Icons.cancel,
+                              label: 'Cancel',
+                              color: Colors.red,
+                              onPressed: () =>
+                                  widget.onCancel(event.taskId),
+                            ),
+                          ],
                         ],
                       ),
                     ],

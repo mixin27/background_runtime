@@ -20,6 +20,7 @@ class BackgroundRuntimeService : Service() {
     companion object {
         const val CHANNEL_ID = "background_runtime_channel"
         const val NOTIFICATION_ID = 1
+        const val DOWNLOAD_NOTIFICATION_ID = 1001
         const val AUDIO_NOTIFICATION_ID = 2
 
         const val ACTION_PLAY = "dev.mixin27.background_runtime.action.PLAY"
@@ -33,71 +34,58 @@ class BackgroundRuntimeService : Service() {
 
         fun updateDownloadNotification(taskId: String, bytesReceived: Long, totalBytes: Long) {
             val service = instance ?: return
-            val progress = if (totalBytes > 0) (bytesReceived * 100 / totalBytes).toInt() else 0
-            val sizeText = formatFileSize(bytesReceived) + " / " + formatFileSize(totalBytes)
-            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
+            val builder = NotificationCompat.Builder(service, CHANNEL_ID)
                 .setContentTitle("Downloading")
-                .setContentText("$progress% - $sizeText")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
-                .setProgress(100, progress, false)
-                .build()
+            if (totalBytes > 0) {
+                val progress = (bytesReceived * 100 / totalBytes).toInt()
+                val sizeText = formatFileSize(bytesReceived) + " / " + formatFileSize(totalBytes)
+                builder.setContentText("$progress% - $sizeText")
+                    .setProgress(100, progress, false)
+            } else {
+                builder.setContentText(formatFileSize(bytesReceived) + " downloaded")
+                    .setProgress(0, 0, true)
+            }
+            val notification = builder.build()
             val manager = service.getSystemService(NotificationManager::class.java)
-            manager.notify(NOTIFICATION_ID, notification)
+            manager.notify(DOWNLOAD_NOTIFICATION_ID, notification)
+        }
+
+        private fun replaceDownloadNotification(
+            title: String,
+            text: String
+        ) {
+            val service = instance ?: return
+            val manager = service.getSystemService(NotificationManager::class.java)
+            manager.cancel(DOWNLOAD_NOTIFICATION_ID)
+            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .build()
+            manager.notify(DOWNLOAD_NOTIFICATION_ID, notification)
         }
 
         fun updateDownloadCompleteNotification(taskId: String) {
-            val service = instance ?: return
-            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
-                .setContentTitle("Download complete")
-                .setContentText("Download finished successfully")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .setProgress(0, 0, false)
-                .build()
-            val manager = service.getSystemService(NotificationManager::class.java)
-            manager.notify(NOTIFICATION_ID, notification)
+            replaceDownloadNotification("Download complete", "Download finished successfully")
         }
 
         fun updateDownloadPausedNotification(taskId: String) {
-            val service = instance ?: return
-            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
-                .setContentTitle("Download paused")
-                .setContentText("Download is paused")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .build()
-            val manager = service.getSystemService(NotificationManager::class.java)
-            manager.notify(NOTIFICATION_ID, notification)
+            replaceDownloadNotification("Download paused", "Download is paused")
         }
 
         fun updateDownloadFailedNotification(taskId: String) {
-            val service = instance ?: return
-            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
-                .setContentTitle("Download failed")
-                .setContentText("Download encountered an error")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .build()
-            val manager = service.getSystemService(NotificationManager::class.java)
-            manager.notify(NOTIFICATION_ID, notification)
+            replaceDownloadNotification("Download failed", "Download encountered an error")
         }
 
         fun resetNotification() {
             val service = instance ?: return
-            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
-                .setContentTitle("Background Runtime")
-                .setContentText("Running in background")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .build()
             val manager = service.getSystemService(NotificationManager::class.java)
-            manager.notify(NOTIFICATION_ID, notification)
+            manager.cancel(DOWNLOAD_NOTIFICATION_ID)
         }
 
         // --- Audio Notifications ---
@@ -168,6 +156,7 @@ class BackgroundRuntimeService : Service() {
         // --- Helpers ---
 
         private fun formatFileSize(bytes: Long): String {
+            if (bytes <= 0) return "0 B"
             return when {
                 bytes < 1024 -> "$bytes B"
                 bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)

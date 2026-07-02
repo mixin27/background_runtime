@@ -1,6 +1,8 @@
 package dev.mixin27.background_runtime_android
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import dev.mixin27.background_runtime_android.database.DatabaseProvider
 import dev.mixin27.background_runtime_android.database.entity.DownloadEntity
 import io.flutter.plugin.common.EventChannel
@@ -28,6 +30,10 @@ internal object DownloadManager : EventChannel.StreamHandler {
     @Volatile
     private var eventSink: EventChannel.EventSink? = null
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastProgressEmitMs = 0L
+    private val progressThrottleMs = 200L
+
     override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
         eventSink = sink
     }
@@ -36,59 +42,64 @@ internal object DownloadManager : EventChannel.StreamHandler {
         eventSink = null
     }
 
-    private suspend fun emitProgress(taskId: String, bytesReceived: Long, totalBytes: Long, context: Context) {
+    private fun progressOf(bytesReceived: Long, totalBytes: Long): Double {
+        return if (totalBytes > 0) bytesReceived.toDouble() / totalBytes.toDouble() else 0.0
+    }
+
+    private fun emitProgress(taskId: String, bytesReceived: Long, totalBytes: Long, context: Context) {
+        val now = System.currentTimeMillis()
+        val isLast = totalBytes > 0 && bytesReceived >= totalBytes
+        if (!isLast && now - lastProgressEmitMs < progressThrottleMs) return
+        lastProgressEmitMs = now
+
         BackgroundRuntimeService.updateDownloadNotification(taskId, bytesReceived, totalBytes)
-        withContext(Dispatchers.Main) {
-            eventSink?.success(
-                mapOf(
-                    "taskId" to taskId,
-                    "state" to "DOWNLOADING",
-                    "bytesReceived" to bytesReceived,
-                    "totalBytes" to totalBytes
-                )
-            )
-        }
+        val sink = eventSink
+        val event = mapOf(
+            "taskId" to taskId,
+            "state" to "DOWNLOADING",
+            "progress" to progressOf(bytesReceived, totalBytes),
+            "bytesReceived" to bytesReceived,
+            "totalBytes" to totalBytes
+        )
+        mainHandler.post { sink?.success(event) }
     }
 
-    private suspend fun emitCompleted(taskId: String, bytesReceived: Long, totalBytes: Long) {
+    private fun emitCompleted(taskId: String, bytesReceived: Long, totalBytes: Long) {
         BackgroundRuntimeService.updateDownloadCompleteNotification(taskId)
-        withContext(Dispatchers.Main) {
-            eventSink?.success(
-                mapOf(
-                    "taskId" to taskId,
-                    "state" to "COMPLETED",
-                    "bytesReceived" to bytesReceived,
-                    "totalBytes" to totalBytes
-                )
-            )
-        }
+        val sink = eventSink
+        val event = mapOf(
+            "taskId" to taskId,
+            "state" to "COMPLETED",
+            "progress" to 1.0,
+            "bytesReceived" to bytesReceived,
+            "totalBytes" to totalBytes
+        )
+        mainHandler.post { sink?.success(event) }
     }
 
-    private suspend fun emitPaused(taskId: String, bytesReceived: Long, totalBytes: Long) {
+    private fun emitPaused(taskId: String, bytesReceived: Long, totalBytes: Long) {
         BackgroundRuntimeService.updateDownloadPausedNotification(taskId)
-        withContext(Dispatchers.Main) {
-            eventSink?.success(
-                mapOf(
-                    "taskId" to taskId,
-                    "state" to "PAUSED",
-                    "bytesReceived" to bytesReceived,
-                    "totalBytes" to totalBytes
-                )
-            )
-        }
+        val sink = eventSink
+        val event = mapOf(
+            "taskId" to taskId,
+            "state" to "PAUSED",
+            "progress" to progressOf(bytesReceived, totalBytes),
+            "bytesReceived" to bytesReceived,
+            "totalBytes" to totalBytes
+        )
+        mainHandler.post { sink?.success(event) }
     }
 
-    private suspend fun emitFailed(taskId: String, error: String) {
+    private fun emitFailed(taskId: String, error: String) {
         BackgroundRuntimeService.updateDownloadFailedNotification(taskId)
-        withContext(Dispatchers.Main) {
-            eventSink?.success(
-                mapOf(
-                    "taskId" to taskId,
-                    "state" to "FAILED",
-                    "error" to error
-                )
-            )
-        }
+        val sink = eventSink
+        val event = mapOf(
+            "taskId" to taskId,
+            "state" to "FAILED",
+            "progress" to 0.0,
+            "error" to error
+        )
+        mainHandler.post { sink?.success(event) }
     }
 
     suspend fun startDownload(context: Context, request: Map<String, Any?>?): String {
@@ -135,16 +146,25 @@ internal object DownloadManager : EventChannel.StreamHandler {
         return File(context.filesDir, destinationPath)
     }
 
+    private fun resolvePublicFileName(destinationPath: String, url: String): String {
+        val basename = destinationPath.substringAfterLast('/')
+            .ifEmpty { destinationPath }
+        if (basename.contains('.')) return basename
+        val urlFilename = url.substringAfterLast('/').substringBefore('?').let {
+            if (it.contains('.')) it else ""
+        }
+        return urlFilename.ifEmpty { basename }
+    }
+
     private fun resolveOutputStream(
         context: Context,
         destinationPath: String,
+        url: String,
         saveToPublic: Boolean
     ): OutputStream {
         return if (saveToPublic) {
-            val fileName = destinationPath.substringAfterLast('/')
-                .ifEmpty { destinationPath }
+            val fileName = resolvePublicFileName(destinationPath, url)
             PublicStorageResolver.resolveOutputStream(context, fileName)
-                ?: throw RuntimeException("Failed to open public storage output stream")
         } else {
             val file = resolvePrivatePath(context, destinationPath)
             file.parentFile?.mkdirs()
@@ -191,7 +211,7 @@ internal object DownloadManager : EventChannel.StreamHandler {
 
         val contentLength = body.contentLength()
 
-        val outputStream = resolveOutputStream(context, destinationPath, saveToPublic)
+        val outputStream = resolveOutputStream(context, destinationPath, url, saveToPublic)
         val inputStream = body.byteStream()
         val buffer = ByteArray(8192)
         var bytesRead: Int
@@ -205,10 +225,14 @@ internal object DownloadManager : EventChannel.StreamHandler {
                     db.downloadDao.updateState(taskId, DownloadState.PAUSED.name, System.currentTimeMillis())
                     db.downloadDao.updateProgress(taskId, totalBytesRead, contentLength, System.currentTimeMillis())
                     emitPaused(taskId, totalBytesRead, contentLength)
+                    try { outputStream.close() } catch (_: Exception) {}
+                    try { inputStream.close() } catch (_: Exception) {}
                     return
                 }
 
                 if (activeDownloads[taskId] == DownloadState.CANCELLED) {
+                    try { outputStream.close() } catch (_: Exception) {}
+                    try { inputStream.close() } catch (_: Exception) {}
                     cleanup(context, destinationPath, saveToPublic)
                     db.downloadDao.deleteDownload(taskId)
                     return
@@ -218,22 +242,31 @@ internal object DownloadManager : EventChannel.StreamHandler {
                 totalBytesRead += bytesRead
                 emitProgress(taskId, totalBytesRead, contentLength, context)
             }
+
+            activeDownloads[taskId] = DownloadState.COMPLETED
+            db.downloadDao.updateState(taskId, DownloadState.COMPLETED.name, System.currentTimeMillis())
+            db.downloadDao.updateProgress(taskId, totalBytesRead, contentLength, System.currentTimeMillis())
+            emitCompleted(taskId, totalBytesRead, contentLength)
+
+            try {
+                outputStream.close()
+            } catch (_: Exception) {}
+            try {
+                inputStream.close()
+            } catch (_: Exception) {}
         } catch (e: Exception) {
-            outputStream.close()
-            inputStream.close()
+            try {
+                outputStream.close()
+            } catch (_: Exception) {}
+            try {
+                inputStream.close()
+            } catch (_: Exception) {}
             cleanup(context, destinationPath, saveToPublic)
             activeDownloads[taskId] = DownloadState.FAILED
             db.downloadDao.updateState(taskId, DownloadState.FAILED.name, System.currentTimeMillis())
             emitFailed(taskId, e.message ?: "Download failed")
             throw e
         }
-
-        outputStream.close()
-        inputStream.close()
-        activeDownloads[taskId] = DownloadState.COMPLETED
-        db.downloadDao.updateState(taskId, DownloadState.COMPLETED.name, System.currentTimeMillis())
-        db.downloadDao.updateProgress(taskId, totalBytesRead, contentLength, System.currentTimeMillis())
-        emitCompleted(taskId, totalBytesRead, contentLength)
     }
 
     private fun cleanup(context: Context, destinationPath: String, saveToPublic: Boolean) {
