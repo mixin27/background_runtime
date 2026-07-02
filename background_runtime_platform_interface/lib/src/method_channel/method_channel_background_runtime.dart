@@ -129,11 +129,11 @@ final class MethodChannelBackgroundRuntime extends BackgroundRuntimePlatform {
     Map<String, dynamic> arguments,
   ) async {
     try {
-      final result = await _methodChannel.invokeMethod<Map<String, dynamic>>(
+      final result = await _methodChannel.invokeMethod<Map<dynamic, dynamic>>(
         method,
         arguments,
       );
-      return result ?? const {};
+      return result?.cast<String, dynamic>() ?? const {};
     } on PlatformException catch (e) {
       throw _decodeException(e);
     } on MissingPluginException {

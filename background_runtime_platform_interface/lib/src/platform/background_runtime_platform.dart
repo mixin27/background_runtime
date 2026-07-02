@@ -31,7 +31,7 @@ abstract class BackgroundRuntimePlatform extends PlatformInterface {
   /// Throws [AssertionError] if [instance] does not extend
   /// [BackgroundRuntimePlatform].
   static set instance(BackgroundRuntimePlatform instance) {
-    PlatformInterface.verify(instance, BackgroundRuntimePlatform);
+    PlatformInterface.verify(instance, _token);
     _instance = instance;
   }
 

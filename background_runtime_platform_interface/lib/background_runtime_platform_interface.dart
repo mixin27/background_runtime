@@ -7,3 +7,4 @@ export 'src/models/player_state.dart';
 export 'src/models/runtime_config.dart';
 export 'src/models/runtime_lifecycle.dart';
 export 'src/platform/background_runtime_platform.dart';
+export 'src/platform/fake_background_runtime.dart';
